@@ -114,9 +114,11 @@ users/{userId}/
 - `cycleStatus(id, newStatus)` — переключення статусу
 
 ### 📅 **Google Calendar Integration**
-- `createCalendarEvent(lesson)` — створення події в Calendar
+- `createCalendarEvent(lesson, retryCount)` — створення події в Calendar з retry логікою
 - `updateCalendarEvent(lesson)` — оновлення події
 - `deleteCalendarEvent(eventId)` — видалення події з Calendar
+- `syncMissingLessons()` — масова синхронізація несинхронізованих уроків
+- `testCalendarAccess()` — перевірка доступу до Calendar API
 
 ### 🎨 **UI Rendering**
 - `renderAll()` — рендеринг всіх видів
@@ -185,6 +187,9 @@ users/{userId}/
 - ✅ Візуальні індикатори робочих годин
 - ✅ Покращена авторизація Google OAuth
 - ✅ Очищення та оптимізація коду
+- ✅ Retry логіка для Calendar API
+- ✅ Масова синхронізація несинхронізованих уроків
+- ✅ Розширені дозволи Google Calendar scope
 
 **v2.0** (Квітень 2026):
 - ✅ Селектор тривалості (5-хв кроки)

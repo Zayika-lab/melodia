@@ -1411,6 +1411,7 @@ body {
     <div class="app-title">Melodia ♪</div>
     <div class="header-user">
       <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
+      <button class="header-earnings-btn" onclick="syncMissingLessons()" title="Синхронізувати з Google Calendar">📅</button>
       <img id="userPhoto" src="" alt="" onerror="this.style.display='none'">
     </div>
   </div>
@@ -1470,6 +1471,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const gProvider = new firebase.auth.GoogleAuthProvider();
+gProvider.addScope('https://www.googleapis.com/auth/calendar');
 gProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 gProvider.setCustomParameters({
   prompt: 'select_account'
@@ -1594,6 +1596,41 @@ async function testCalendarAccess() {
   }
 }
 
+async function syncMissingLessons() {
+  if (!gAccessToken) {
+    alert('Спочатку увійдіть в Google Calendar');
+    return;
+  }
+
+  const unsyncedLessons = lessons.filter(l => !l.calendarEventId && l.date >= todayStr());
+
+  if (unsyncedLessons.length === 0) {
+    alert('Всі уроки вже синхронізовані з календарем');
+    return;
+  }
+
+  const confirmed = confirm(`Знайдено ${unsyncedLessons.length} несинхронізованих уроків. Синхронізувати з Google Calendar?`);
+  if (!confirmed) return;
+
+  let successful = 0;
+  let failed = 0;
+
+  for (let lesson of unsyncedLessons) {
+    const success = await createCalendarEvent(lesson);
+    if (success) {
+      successful++;
+    } else {
+      failed++;
+    }
+    // Пауза між запитами
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  const message = `Синхронізація завершена!\n✅ Успішно: ${successful}\n❌ Помилок: ${failed}`;
+  alert(message);
+  renderAll();
+}
+
 auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
@@ -1703,12 +1740,15 @@ async function saveSettings(data) {
 // ═══════════════════════════════════════
 // GOOGLE CALENDAR
 // ═══════════════════════════════════════
-async function createCalendarEvent(lesson) {
-  if (!gAccessToken) return;
+async function createCalendarEvent(lesson, retryCount = 0) {
+  if (!gAccessToken) {
+    console.log('Немає Calendar токену, спробуйте увійти знову');
+    return false;
+  }
 
   try {
     const student = students.find(s => s.id === lesson.studentId);
-    if (!student) return;
+    if (!student) return false;
 
     const startDT = `${lesson.date}T${lesson.time}:00`;
     const endDate = new Date(startDT);
@@ -1742,11 +1782,39 @@ async function createCalendarEvent(lesson) {
       await userRef().collection('lessons').doc(lesson.id).update({ calendarEventId: data.id });
       const idx = lessons.findIndex(l => l.id === lesson.id);
       if (idx >= 0) lessons[idx].calendarEventId = data.id;
-    } else if (res.status === 401) {
-      gAccessToken = null;
+      console.log('✅ Подію створено в Calendar');
+      return true;
+    } else {
+      const errorText = await res.text();
+      console.error(`Calendar API помилка ${res.status}:`, errorText);
+
+      if (res.status === 401) {
+        gAccessToken = null;
+        if (retryCount === 0) {
+          console.log('Токен прострочений, потрібен повторний вхід');
+          alert('Токен Google Calendar прострочений. Увійдіть знову для синхронізації з календарем.');
+        }
+      } else if (res.status === 403) {
+        console.error('Недостатньо дозволів для Calendar API');
+        alert('Недостатньо дозволів для Google Calendar. Увійдіть знову і надайте всі дозволи.');
+      } else {
+        console.error('Невідома помилка Calendar API');
+        if (retryCount < 2) {
+          console.log(`Повторна спроба ${retryCount + 1}/2`);
+          await new Promise(r => setTimeout(r, 1000));
+          return createCalendarEvent(lesson, retryCount + 1);
+        }
+      }
+      return false;
     }
   } catch(e) {
-    console.error('Calendar error:', e);
+    console.error('Critical Calendar error:', e);
+    if (retryCount < 2) {
+      console.log(`Повторна спроба після помилки ${retryCount + 1}/2`);
+      await new Promise(r => setTimeout(r, 1000));
+      return createCalendarEvent(lesson, retryCount + 1);
+    }
+    return false;
   }
 }
 
