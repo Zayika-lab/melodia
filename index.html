@@ -167,6 +167,31 @@ body {
   border: 2px solid var(--primary-light);
 }
 
+.header-earnings-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-pale);
+  color: var(--primary-dark);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-right: 8px;
+}
+
+.header-earnings-btn:hover {
+  background: var(--primary-light);
+  transform: scale(1.05);
+}
+
+.header-earnings-btn:active {
+  transform: scale(0.95);
+}
+
 /* ═══ NAVIGATION ═══ */
 .bottom-nav {
   position: fixed;
@@ -919,47 +944,33 @@ body {
 }
 
 /* ═══ TIMELINE VIEW ═══ */
-.timeline-header {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
-}
-
-.timeline-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.timeline-sub {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 4px;
+.timeline-container {
+  padding-top: 8px;
 }
 
 .timeline-day {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
   scroll-margin-top: 80px;
 }
 
-.timeline-day-today {
+.timeline-day-today .timeline-date {
   background: var(--primary-pale);
-  border-radius: var(--radius);
-  padding: 8px;
-  margin-left: -8px;
-  margin-right: -8px;
+  border-color: var(--primary);
 }
 
 .timeline-date {
-  min-width: 100px;
-  padding: 8px;
+  width: 100%;
+  padding: 12px 16px;
   cursor: pointer;
   transition: background 0.15s;
   border-radius: var(--radius-sm);
   position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
 }
 
 .timeline-date:active { background: var(--card-hover); }
@@ -989,7 +1000,7 @@ body {
 }
 
 .timeline-lessons {
-  flex: 1;
+  width: 100%;
 }
 
 .timeline-empty {
@@ -1151,6 +1162,84 @@ body {
   color: var(--accent-rose);
 }
 
+/* ═══ TIME SCALE ═══ */
+.day-time-scale {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.time-scale-header {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.time-scale-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+}
+
+.time-slot {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.time-slot.free {
+  background: white;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.time-slot.occupied {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.time-slot.non-working {
+  background: var(--bg);
+  color: var(--text-light);
+  border-color: transparent;
+  opacity: 0.6;
+}
+
+.time-slot:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.time-label {
+  display: block;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .time-slot {
+    width: 44px;
+    height: 28px;
+    font-size: 0.6rem;
+  }
+}
+
 /* ═══ STUDENT SELECT LIST ═══ */
 .student-select-item {
   display: flex;
@@ -1215,6 +1304,7 @@ body {
   <div class="app-header">
     <div class="app-title">Melodia ♪</div>
     <div class="header-user">
+      <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
       <img id="userPhoto" src="" alt="" onerror="this.style.display='none'">
     </div>
   </div>
@@ -1222,7 +1312,6 @@ body {
   <!-- Views -->
   <div id="viewDashboard" class="view active"></div>
   <div id="viewLessons" class="view"></div>
-  <div id="viewTimeline" class="view"></div>
   <div id="viewStudents" class="view"></div>
   <div id="viewSettings" class="view"></div>
 
@@ -1238,10 +1327,6 @@ body {
     <button class="nav-item" onclick="switchView('lessons')" data-view="lessons">
       <span class="nav-icon">📅</span>
       <span class="nav-label">Розклад</span>
-    </button>
-    <button class="nav-item" onclick="switchView('timeline')" data-view="timeline">
-      <span class="nav-icon">📋</span>
-      <span class="nav-label">Список</span>
     </button>
     <button class="nav-item" onclick="switchView('students')" data-view="students" id="navStudents">
       <span class="nav-icon">👥</span>
@@ -1672,7 +1757,6 @@ function switchView(view) {
   fab.style.display = (view === 'settings') ? 'none' : 'flex';
 
   if (view === 'lessons') fab.onclick = () => openAddLesson();
-  else if (view === 'timeline') fab.onclick = () => openAddLesson();
   else if (view === 'students') fab.onclick = () => openStudentForm();
   else fab.onclick = () => openAddLesson();
 
@@ -1685,7 +1769,6 @@ function switchView(view) {
 function renderAll() {
   renderDashboard();
   renderLessons();
-  renderTimeline();
   renderStudents();
   renderSettings();
   updateUnpaidBadge();
@@ -1762,6 +1845,7 @@ function renderLessons() {
   html += `<div class="view-toggle">
     <button class="view-toggle-btn ${calendarView === 'week' ? 'active' : ''}" onclick="toggleCalendarView('week')">Тиждень</button>
     <button class="view-toggle-btn ${calendarView === 'month' ? 'active' : ''}" onclick="toggleCalendarView('month')">Місяць</button>
+    <button class="view-toggle-btn ${calendarView === 'list' ? 'active' : ''}" onclick="toggleCalendarView('list')">Список</button>
   </div>`;
 
   if (calendarView === 'week') {
@@ -1825,13 +1909,105 @@ function renderLessons() {
       </div>`;
     });
     html += '</div>';
+  } else if (calendarView === 'list') {
+    // Timeline/List view
+    const today = todayStr();
+
+    // Get lessons from 30 days ago to 60 days ahead, grouped by date
+    const startDate = addDays(today, -30);
+    const endDate = addDays(today, 60);
+
+    const timelineLessons = lessons.filter(l => l.date >= startDate && l.date <= endDate)
+      .sort((a,b) => a.date === b.date ? (a.time||'').localeCompare(b.time||'') : a.date.localeCompare(b.date));
+
+    // Group by date
+    const lessonsByDate = {};
+    timelineLessons.forEach(l => {
+      if (!lessonsByDate[l.date]) lessonsByDate[l.date] = [];
+      lessonsByDate[l.date].push(l);
+    });
+
+    // Generate timeline
+    const current = parseDate(startDate);
+    const endDateObj = parseDate(endDate);
+
+    html += '<div class="timeline-container">';
+
+    while (current <= endDateObj) {
+      const dateStr = fmtDate(current);
+      const dayLessons = lessonsByDate[dateStr] || [];
+      const isToday = dateStr === today;
+      const dayName = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'][current.getDay()];
+
+      if (dayLessons.length > 0 || isToday) {
+        const todayClass = isToday ? 'timeline-day-today' : '';
+
+        html += `<div class="timeline-day ${todayClass}" id="timeline-${dateStr}">
+          <div class="timeline-date" onclick="selectDayFromList('${dateStr}')">
+            <div class="timeline-date-main">${dayName}</div>
+            <div class="timeline-date-sub">${fmtDateUkr(dateStr)}</div>
+            ${isToday ? '<div class="timeline-today-badge">Сьогодні</div>' : ''}
+          </div>
+          <div class="timeline-lessons">`;
+
+        if (dayLessons.length > 0) {
+          dayLessons.forEach(l => {
+            html += renderLessonCard(l);
+          });
+        } else if (isToday) {
+          html += `<div class="timeline-empty">Сьогодні немає уроків</div>`;
+        }
+
+        html += `</div></div>`;
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (Object.keys(lessonsByDate).length === 0) {
+      html += `<div class="empty-state">
+        <div class="es-icon">📋</div>
+        <div class="es-text">Немає запланованих уроків</div>
+      </div>`;
+    }
+
+    html += '</div>';
+
+    // Auto scroll to today
+    setTimeout(() => {
+      const todayElement = document.getElementById(`timeline-${today}`);
+      if (todayElement && calendarView === 'list') {
+        todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    document.getElementById('viewLessons').innerHTML = html;
+    return;
   }
 
-  // Day lessons
+  // Day lessons with time scale
   const dayLessons = lessons.filter(l => l.date === selectedDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  const timeSlots = generateTimeSlots(selectedDate);
+
   html += `<div class="section-title">${fmtDateFull(selectedDate)}</div>`;
 
+  if (timeSlots.length > 0) {
+    html += `<div class="day-time-scale">
+      <div class="time-scale-header">Робочий час</div>
+      <div class="time-scale-grid">`;
+
+    timeSlots.forEach(slot => {
+      const slotClass = slot.hasLesson ? 'occupied' : (slot.isWorkingTime ? 'free' : 'non-working');
+      html += `<div class="time-slot ${slotClass}" title="${slot.time}">
+        <span class="time-label">${slot.time}</span>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
   if (dayLessons.length > 0) {
+    html += `<div class="section-title" style="margin-top: 24px"><span class="st-icon">🎵</span> Уроки дня</div>`;
     dayLessons.forEach(l => { html += renderLessonCard(l); });
   } else {
     html += `<div class="empty-state">
@@ -1864,9 +2040,17 @@ function toggleCalendarView(view) {
   calendarView = view;
   if (view === 'month') {
     selectedMonth = selectedDate.slice(0, 7);
-  } else {
+  } else if (view === 'week') {
     selectedWeekStart = getWeekStart(parseDate(selectedDate));
   }
+  renderLessons();
+}
+
+function selectDayFromList(dateStr) {
+  selectedDate = dateStr;
+  selectedWeekStart = getWeekStart(parseDate(dateStr));
+  selectedMonth = dateStr.slice(0, 7);
+  calendarView = 'week';
   renderLessons();
 }
 
@@ -1918,6 +2102,99 @@ function getMonthDays(monthStr) {
   }
 
   return days;
+}
+
+// ═══ TIME SCALE FUNCTIONS ═══
+function getWorkingHoursForDate(dateStr) {
+  const date = parseDate(dateStr);
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = dayNames[date.getDay()];
+
+  return settings.workingHours[dayName] || { start: '09:00', end: '18:00', enabled: true };
+}
+
+function generateTimeSlots(dateStr) {
+  const workingHours = getWorkingHoursForDate(dateStr);
+  const dayLessons = lessons.filter(l => l.date === dateStr);
+
+  if (!workingHours.enabled) return [];
+
+  const slots = [];
+  const startHour = parseInt(workingHours.start.split(':')[0]);
+  const startMin = parseInt(workingHours.start.split(':')[1]);
+  const endHour = parseInt(workingHours.end.split(':')[0]);
+  const endMin = parseInt(workingHours.end.split(':')[1]);
+
+  // Extend range if lessons exist outside working hours
+  let actualStartHour = startHour;
+  let actualStartMin = startMin;
+  let actualEndHour = endHour;
+  let actualEndMin = endMin;
+
+  dayLessons.forEach(lesson => {
+    if (lesson.time) {
+      const lessonHour = parseInt(lesson.time.split(':')[0]);
+      const lessonMin = parseInt(lesson.time.split(':')[1]);
+
+      if (lessonHour < actualStartHour || (lessonHour === actualStartHour && lessonMin < actualStartMin)) {
+        actualStartHour = lessonHour;
+        actualStartMin = lessonMin;
+      }
+
+      const lessonEndMin = lessonMin + (lesson.duration || 45);
+      let lessonEndHour = lessonHour;
+      if (lessonEndMin >= 60) {
+        lessonEndHour += Math.floor(lessonEndMin / 60);
+      }
+      const finalLessonEndMin = lessonEndMin % 60;
+
+      if (lessonEndHour > actualEndHour || (lessonEndHour === actualEndHour && finalLessonEndMin > actualEndMin)) {
+        actualEndHour = lessonEndHour;
+        actualEndMin = finalLessonEndMin;
+      }
+    }
+  });
+
+  // Generate 15-minute slots
+  let currentHour = actualStartHour;
+  let currentMin = actualStartMin;
+  const endTime = actualEndHour * 60 + actualEndMin;
+
+  while (currentHour * 60 + currentMin < endTime) {
+    const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+
+    // Check if this slot has a lesson
+    const hasLesson = dayLessons.some(lesson => {
+      if (!lesson.time) return false;
+      const lessonStart = lesson.time;
+      const [lessonHour, lessonMinute] = lessonStart.split(':').map(Number);
+      const lessonStartMin = lessonHour * 60 + lessonMinute;
+      const lessonEndMin = lessonStartMin + (lesson.duration || 45);
+      const slotStartMin = currentHour * 60 + currentMin;
+
+      return slotStartMin >= lessonStartMin && slotStartMin < lessonEndMin;
+    });
+
+    const isWorkingTime = (
+      currentHour * 60 + currentMin >= startHour * 60 + startMin &&
+      currentHour * 60 + currentMin < endHour * 60 + endMin
+    );
+
+    slots.push({
+      time: timeStr,
+      hasLesson,
+      isWorkingTime
+    });
+
+    // Add 15 minutes
+    currentMin += 15;
+    if (currentMin >= 60) {
+      currentHour += 1;
+      currentMin = 0;
+    }
+  }
+
+  return slots;
 }
 
 // ═══ LESSON CARD ═══
@@ -1993,93 +2270,6 @@ function renderStudents() {
   document.getElementById('viewStudents').innerHTML = html;
 }
 
-// ═══ TIMELINE VIEW ═══
-function renderTimeline() {
-  const today = todayStr();
-
-  // Get lessons from 30 days ago to 60 days ahead, grouped by date
-  const startDate = addDays(today, -30);
-  const endDate = addDays(today, 60);
-
-  const timelineLessons = lessons.filter(l => l.date >= startDate && l.date <= endDate)
-    .sort((a,b) => a.date === b.date ? (a.time||'').localeCompare(b.time||'') : a.date.localeCompare(b.date));
-
-  // Group by date
-  const lessonsByDate = {};
-  timelineLessons.forEach(l => {
-    if (!lessonsByDate[l.date]) lessonsByDate[l.date] = [];
-    lessonsByDate[l.date].push(l);
-  });
-
-  let html = '';
-
-  // Header with navigation hint
-  html += `<div class="timeline-header">
-    <div class="timeline-title">Загальний список уроків</div>
-    <div class="timeline-sub">Натисніть на дату щоб перейти до дня</div>
-  </div>`;
-
-  // Generate timeline
-  const current = parseDate(startDate);
-  const endDateObj = parseDate(endDate);
-
-  while (current <= endDateObj) {
-    const dateStr = fmtDate(current);
-    const dayLessons = lessonsByDate[dateStr] || [];
-    const isToday = dateStr === today;
-    const dayName = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'][current.getDay()];
-
-    if (dayLessons.length > 0 || isToday) {
-      const todayClass = isToday ? 'timeline-day-today' : '';
-
-      html += `<div class="timeline-day ${todayClass}" id="timeline-${dateStr}">
-        <div class="timeline-date" onclick="jumpToDay('${dateStr}')">
-          <div class="timeline-date-main">${dayName}</div>
-          <div class="timeline-date-sub">${fmtDateUkr(dateStr)}</div>
-          ${isToday ? '<div class="timeline-today-badge">Сьогодні</div>' : ''}
-        </div>
-        <div class="timeline-lessons">`;
-
-      if (dayLessons.length > 0) {
-        dayLessons.forEach(l => {
-          html += renderLessonCard(l);
-        });
-      } else if (isToday) {
-        html += `<div class="timeline-empty">Сьогодні немає уроків</div>`;
-      }
-
-      html += `</div></div>`;
-    }
-
-    current.setDate(current.getDate() + 1);
-  }
-
-  if (Object.keys(lessonsByDate).length === 0) {
-    html += `<div class="empty-state">
-      <div class="es-icon">📋</div>
-      <div class="es-text">Немає запланованих уроків</div>
-    </div>`;
-  }
-
-  document.getElementById('viewTimeline').innerHTML = html;
-
-  // Auto scroll to today
-  if (currentView === 'timeline') {
-    setTimeout(() => {
-      const todayElement = document.getElementById(`timeline-${today}`);
-      if (todayElement) {
-        todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
-  }
-}
-
-function jumpToDay(dateStr) {
-  selectedDate = dateStr;
-  selectedWeekStart = getWeekStart(parseDate(dateStr));
-  selectedMonth = dateStr.slice(0, 7);
-  switchView('lessons');
-}
 
 // ═══ SETTINGS ═══
 function renderSettings() {
@@ -2125,10 +2315,6 @@ function renderSettings() {
   });
 
   html += `</div>
-
-  <button class="form-btn btn-primary" onclick="openEarningsView()" style="margin-top:16px">
-    💰 Переглянути заробіток
-  </button>
 
   <button class="logout-btn" onclick="auth.signOut()">
     Вийти з акаунту
