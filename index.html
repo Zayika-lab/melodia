@@ -612,6 +612,31 @@ body {
 .messenger-option .m-label { font-size: 0.6rem; font-weight: 600; color: var(--text-secondary); }
 .messenger-option.selected { border-color: var(--primary); background: var(--primary-pale); }
 
+/* ═══ PAYMENT METHOD PICKER ═══ */
+.payment-grid {
+  display: flex;
+  gap: 8px;
+}
+
+.payment-option {
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.payment-option .p-icon { font-size: 1.5rem; }
+.payment-option .p-label { font-size: 0.6rem; font-weight: 600; color: var(--text-secondary); }
+.payment-option.selected { border-color: var(--primary); background: var(--primary-pale); }
+
 /* ═══ SUGGESTED STUDENTS ═══ */
 .suggested-list {
   display: flex;
@@ -1080,8 +1105,14 @@ async function createCalendarEvent(lesson) {
     endDate.setMinutes(endDate.getMinutes() + (lesson.duration || 45));
     const endDT = endDate.toISOString().slice(0,19);
 
+    const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
+    const paymentIcon = paymentIcons[lesson.paymentMethod] || '💵';
+    const paymentNames = { cash: 'Готівка', card: 'Картка', paypal: 'PayPal' };
+    const paymentName = paymentNames[lesson.paymentMethod] || 'Готівка';
+
     const event = {
       summary: `🎵 Урок: ${lesson.studentName}`,
+      description: `Учень: ${lesson.studentName}\nТривалість: ${lesson.duration || 45} хв\nЦіна: ${lesson.price || 0}€\nСпосіб оплати: ${paymentIcon} ${paymentName}`,
       start: { dateTime: startDT, timeZone: 'Europe/Berlin' },
       end: { dateTime: endDT, timeZone: 'Europe/Berlin' },
       reminders: {
@@ -1115,8 +1146,14 @@ async function updateCalendarEvent(lesson) {
     endDate.setMinutes(endDate.getMinutes() + (lesson.duration || 45));
     const endDT = endDate.toISOString().slice(0,19);
 
+    const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
+    const paymentIcon = paymentIcons[lesson.paymentMethod] || '💵';
+    const paymentNames = { cash: 'Готівка', card: 'Картка', paypal: 'PayPal' };
+    const paymentName = paymentNames[lesson.paymentMethod] || 'Готівка';
+
     const event = {
       summary: `🎵 Урок: ${lesson.studentName}`,
+      description: `Учень: ${lesson.studentName}\nТривалість: ${lesson.duration || 45} хв\nЦіна: ${lesson.price || 0}€\nСпосіб оплати: ${paymentIcon} ${paymentName}`,
       start: { dateTime: startDT, timeZone: 'Europe/Berlin' },
       end: { dateTime: endDT, timeZone: 'Europe/Berlin' },
       reminders: {
@@ -1345,6 +1382,9 @@ function renderLessonCard(l, showDate) {
   const nextStatus = l.status === 'planned' ? 'completed' : (l.status === 'completed' ? 'paid' : 'planned');
   const dateLabel = showDate ? `<span>${fmtDateUkr(l.date)}</span>` : '';
 
+  const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
+  const paymentIcon = paymentIcons[l.paymentMethod] || '💵';
+
   return `<div class="card lesson-card" onclick="openEditLesson('${l.id}')">
     <div class="lesson-emoji ${emojiClass}">${emoji}</div>
     <div class="lesson-info">
@@ -1352,6 +1392,7 @@ function renderLessonCard(l, showDate) {
       <div class="lesson-meta">
         <span>${l.time || ''}</span>
         <span>${l.duration || 45} хв</span>
+        <span>${paymentIcon}</span>
         ${dateLabel}
       </div>
     </div>
@@ -1379,14 +1420,17 @@ function renderStudents() {
     </div>`;
   } else {
     students.forEach(s => {
-      const messengerBtn = s.messengerType ? 
+      const messengerBtn = s.messengerType ?
         `<a href="${getMessengerLink(s.messengerType, s.messengerContact)}" target="_blank" class="messenger-btn ${getMessengerClass(s.messengerType)}" onclick="event.stopPropagation()">${getMessengerIcon(s.messengerType)}</a>` : '';
+
+      const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
+      const paymentIcon = paymentIcons[s.defaultPaymentMethod] || '💵';
 
       html += `<div class="card student-card" onclick="openStudentForm('${s.id}')">
         <div class="student-avatar">${s.emoji || '🎵'}</div>
         <div class="student-info">
           <div class="student-name">${s.name}</div>
-          <div class="student-details">${s.defaultDuration || 45} хв · ${s.defaultPrice || 0}€</div>
+          <div class="student-details">${s.defaultDuration || 45} хв · ${s.defaultPrice || 0}€ · ${paymentIcon}</div>
         </div>
         ${messengerBtn}
       </div>`;
@@ -1490,6 +1534,25 @@ function openStudentForm(id) {
         <input type="text" class="form-input" id="fStudentContact" value="${s?.messengerContact||''}" placeholder="+49... або @username">
       </div>
 
+      <div class="form-group">
+        <label class="form-label">Спосіб оплати за замовчуванням</label>
+        <div class="payment-grid">
+          <button class="payment-option ${(s?.defaultPaymentMethod||'cash')==='cash'?'selected':''}" onclick="selectStudentPaymentMethod(this,'cash')">
+            <span class="p-icon">💵</span>
+            <span class="p-label">Готівка</span>
+          </button>
+          <button class="payment-option ${(s?.defaultPaymentMethod||'')==='card'?'selected':''}" onclick="selectStudentPaymentMethod(this,'card')">
+            <span class="p-icon">💳</span>
+            <span class="p-label">Картка</span>
+          </button>
+          <button class="payment-option ${(s?.defaultPaymentMethod||'')==='paypal'?'selected':''}" onclick="selectStudentPaymentMethod(this,'paypal')">
+            <span class="p-icon">🅿️</span>
+            <span class="p-label">PayPal</span>
+          </button>
+        </div>
+        <input type="hidden" id="fStudentPaymentMethod" value="${s?.defaultPaymentMethod||'cash'}">
+      </div>
+
       <button class="form-btn btn-primary" onclick="submitStudent('${id||''}')">Зберегти</button>
       ${s ? `<button class="form-btn btn-danger" onclick="confirmDeleteStudent('${id}')">Видалити учня</button>` : ''}
       <button class="form-btn btn-secondary" onclick="closeModal()">Скасувати</button>
@@ -1512,6 +1575,18 @@ function selectMessenger(btn, type) {
   document.getElementById('messengerContactGroup').style.display = 'block';
 }
 
+function selectStudentPaymentMethod(btn, method) {
+  btn.closest('.payment-grid').querySelectorAll('.payment-option').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('fStudentPaymentMethod').value = method;
+}
+
+function selectPaymentMethod(btn, method) {
+  btn.closest('.payment-grid').querySelectorAll('.payment-option').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('fLessonPaymentMethod').value = method;
+}
+
 function submitStudent(id) {
   const name = document.getElementById('fStudentName').value.trim();
   if (!name) { alert('Введіть ім\'я'); return; }
@@ -1522,7 +1597,8 @@ function submitStudent(id) {
     defaultDuration: parseInt(document.getElementById('fStudentDuration').value) || 45,
     defaultPrice: parseFloat(document.getElementById('fStudentPrice').value) || 0,
     messengerType: document.getElementById('fStudentMessengerType').value || null,
-    messengerContact: document.getElementById('fStudentContact').value.trim() || null
+    messengerContact: document.getElementById('fStudentContact').value.trim() || null,
+    defaultPaymentMethod: document.getElementById('fStudentPaymentMethod').value || 'cash'
   };
 
   saveStudent(data, id || null);
@@ -1635,6 +1711,25 @@ function openLessonForm(date, studentId, lessonId) {
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">Спосіб оплати</label>
+        <div class="payment-grid">
+          <button class="payment-option ${(lesson?.paymentMethod||student?.defaultPaymentMethod||'cash')==='cash'?'selected':''}" onclick="selectPaymentMethod(this,'cash')">
+            <span class="p-icon">💵</span>
+            <span class="p-label">Готівка</span>
+          </button>
+          <button class="payment-option ${(lesson?.paymentMethod||student?.defaultPaymentMethod||'')==='card'?'selected':''}" onclick="selectPaymentMethod(this,'card')">
+            <span class="p-icon">💳</span>
+            <span class="p-label">Картка</span>
+          </button>
+          <button class="payment-option ${(lesson?.paymentMethod||student?.defaultPaymentMethod||'')==='paypal'?'selected':''}" onclick="selectPaymentMethod(this,'paypal')">
+            <span class="p-icon">🅿️</span>
+            <span class="p-label">PayPal</span>
+          </button>
+        </div>
+        <input type="hidden" id="fLessonPaymentMethod" value="${lesson?.paymentMethod||student?.defaultPaymentMethod||'cash'}">
+      </div>
+
       <button class="form-btn btn-primary" onclick="submitLesson('${studentId}','${lessonId||''}')">
         ${lesson ? 'Зберегти зміни' : 'Додати урок'}
       </button>
@@ -1660,6 +1755,7 @@ function submitLesson(studentId, lessonId) {
     time: time || '00:00',
     duration: parseInt(document.getElementById('fLessonDuration').value) || 45,
     price: parseFloat(document.getElementById('fLessonPrice').value) || 0,
+    paymentMethod: document.getElementById('fLessonPaymentMethod').value || 'cash',
     status: lessonId ? (lessons.find(l=>l.id===lessonId)?.status || 'planned') : 'planned'
   };
 
