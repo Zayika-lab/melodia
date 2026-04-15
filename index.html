@@ -1365,6 +1365,9 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const gProvider = new firebase.auth.GoogleAuthProvider();
 gProvider.addScope('https://www.googleapis.com/auth/calendar.events');
+gProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 let currentUser = null;
 let gAccessToken = null;
@@ -1450,9 +1453,24 @@ function googleLogin() {
   // Перевірка доступності Firebase
   if (!auth || !gProvider) {
     console.error('❌ Firebase не ініціалізовано');
-    alert('Помилка: Firebase не ініціалізовано');
+    alert('Помилка: Firebase не ініціалізовано. Перезавантажте сторінку.');
     return;
   }
+
+  // Перевірка чи це локальна розробка на HTTP
+  if (window.location.protocol === 'http:' && window.location.hostname === 'localhost') {
+    console.warn('⚠️ Локальна розробка на HTTP - можуть бути обмеження OAuth');
+  }
+
+  // Додаткові налаштування для локальної розробки
+  if (window.location.hostname === 'localhost') {
+    gProvider.setCustomParameters({
+      prompt: 'select_account',
+      hd: '' // Дозволити всі домени
+    });
+  }
+
+  console.log('🔐 Відкриття popup авторизації...');
 
   auth.signInWithPopup(gProvider).then(result => {
     console.log('✅ Успішний вхід:', result.user.email);
@@ -1460,25 +1478,52 @@ function googleLogin() {
     if (result.credential) {
       gAccessToken = result.credential.accessToken;
       console.log('✅ Google Calendar токен отримано');
+
+      // Тест доступу до Calendar API
+      setTimeout(() => testCalendarAccess(), 1000);
     } else {
       console.warn('⚠️ Google Calendar токен не отримано');
+      alert('Увага: Токен для Google Calendar не отримано. Функції календаря можуть не працювати.');
     }
-
-    // Тест доступу до Calendar API
-    testCalendarAccess();
 
   }).catch(err => {
     console.error("❌ Помилка входу:", err);
 
     // Детальна діагностика помилки
-    if (err.code === 'auth/popup-closed-by-user') {
-      alert("Вікно входу було закрито. Спробуйте ще раз.");
-    } else if (err.code === 'auth/popup-blocked') {
-      alert("Спливаючі вікна заблоковані. Дозвольте спливаючі вікна для цього сайту.");
-    } else if (err.code === 'auth/cancelled-popup-request') {
-      alert("Запит скасовано. Спробуйте ще раз.");
-    } else {
-      alert("Помилка входу: " + err.message);
+    let errorMessage = "Помилка входу: ";
+    let solution = "";
+
+    switch(err.code) {
+      case 'auth/popup-closed-by-user':
+        errorMessage = "Вікно входу було закрито.";
+        solution = "Спробуйте ще раз і дочекайтеся завершення.";
+        break;
+      case 'auth/popup-blocked':
+        errorMessage = "Спливаючі вікна заблоковані.";
+        solution = "Дозвольте спливаючі вікна для цього сайту в налаштуваннях браузера.";
+        break;
+      case 'auth/cancelled-popup-request':
+        errorMessage = "Запит скасовано.";
+        solution = "Почекайте і спробуйте ще раз.";
+        break;
+      case 'auth/network-request-failed':
+        errorMessage = "Проблема з мережею.";
+        solution = "Перевірте інтернет-з'єднання.";
+        break;
+      case 'auth/unauthorized-domain':
+        errorMessage = "Домен не авторизований.";
+        solution = "Використовуйте офіційний домен додатку або налаштуйте Firebase Console.";
+        break;
+      default:
+        errorMessage = err.message;
+        solution = "Спробуйте пізніше або зверніться до підтримки.";
+    }
+
+    alert(errorMessage + "\n\nРішення: " + solution);
+
+    // Пропозиція використати debug версію
+    if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/popup-blocked') {
+      console.log('💡 Для діагностики відкрийте: http://localhost:8000/debug.html');
     }
   });
 }
