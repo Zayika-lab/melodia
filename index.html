@@ -918,6 +918,239 @@ body {
   background: white;
 }
 
+/* ═══ TIMELINE VIEW ═══ */
+.timeline-header {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.timeline-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.timeline-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.timeline-day {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  scroll-margin-top: 80px;
+}
+
+.timeline-day-today {
+  background: var(--primary-pale);
+  border-radius: var(--radius);
+  padding: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+.timeline-date {
+  min-width: 100px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.timeline-date:active { background: var(--card-hover); }
+
+.timeline-date-main {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.timeline-date-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.timeline-today-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--primary);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.timeline-lessons {
+  flex: 1;
+}
+
+.timeline-empty {
+  color: var(--text-light);
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 16px;
+  text-align: center;
+}
+
+/* ═══ WORKING HOURS ═══ */
+.working-hours-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.working-hours-row:last-child {
+  border-bottom: none;
+}
+
+.working-hours-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.working-hours-day input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.working-hours-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.working-hours-time.disabled {
+  opacity: 0.5;
+}
+
+.working-hours-time input[type="time"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  background: var(--bg);
+  color: var(--text);
+  width: 80px;
+}
+
+.working-hours-time input[type="time"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.working-hours-time span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ═══ EARNINGS VIEW ═══ */
+.earnings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.earnings-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.earnings-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary);
+}
+
+.earnings-today::before { background: var(--primary); }
+.earnings-week::before { background: var(--accent-lavender); }
+.earnings-month::before { background: var(--accent-green); }
+
+.earnings-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.earnings-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Playfair Display', serif;
+  margin-bottom: 4px;
+}
+
+.earnings-count {
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.earnings-summary {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.earnings-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.earnings-summary-row:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.earnings-summary-total {
+  font-weight: 600;
+  font-size: 1rem;
+  background: var(--primary-pale);
+  margin: 8px -16px -16px -16px;
+  padding: 12px 16px;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.earnings-summary-amount {
+  font-weight: 600;
+  color: var(--accent-green);
+}
+
+.earnings-summary-pending {
+  font-weight: 600;
+  color: var(--accent-rose);
+}
+
 /* ═══ STUDENT SELECT LIST ═══ */
 .student-select-item {
   display: flex;
@@ -989,6 +1222,7 @@ body {
   <!-- Views -->
   <div id="viewDashboard" class="view active"></div>
   <div id="viewLessons" class="view"></div>
+  <div id="viewTimeline" class="view"></div>
   <div id="viewStudents" class="view"></div>
   <div id="viewSettings" class="view"></div>
 
@@ -1004,6 +1238,10 @@ body {
     <button class="nav-item" onclick="switchView('lessons')" data-view="lessons">
       <span class="nav-icon">📅</span>
       <span class="nav-label">Розклад</span>
+    </button>
+    <button class="nav-item" onclick="switchView('timeline')" data-view="timeline">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Список</span>
     </button>
     <button class="nav-item" onclick="switchView('students')" data-view="students" id="navStudents">
       <span class="nav-icon">👥</span>
@@ -1047,7 +1285,18 @@ let currentUser = null;
 let gAccessToken = null;
 let students = [];
 let lessons = [];
-let settings = { reminderMinutes: 30 };
+let settings = {
+  reminderMinutes: 30,
+  workingHours: {
+    monday: { start: '09:00', end: '18:00', enabled: true },
+    tuesday: { start: '09:00', end: '18:00', enabled: true },
+    wednesday: { start: '09:00', end: '18:00', enabled: true },
+    thursday: { start: '09:00', end: '18:00', enabled: true },
+    friday: { start: '09:00', end: '18:00', enabled: true },
+    saturday: { start: '10:00', end: '16:00', enabled: true },
+    sunday: { start: '10:00', end: '16:00', enabled: false }
+  }
+};
 let currentView = 'dashboard';
 let selectedDate = todayStr();
 let selectedWeekStart = getWeekStart(new Date());
@@ -1085,6 +1334,7 @@ function addDays(dateStr, n) {
 
 const DAY_NAMES = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
 const MONTH_NAMES = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+const MONTH_NAMES_NOM = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
 
 function fmtDateUkr(dateStr) {
   const d = parseDate(dateStr);
@@ -1422,6 +1672,7 @@ function switchView(view) {
   fab.style.display = (view === 'settings') ? 'none' : 'flex';
 
   if (view === 'lessons') fab.onclick = () => openAddLesson();
+  else if (view === 'timeline') fab.onclick = () => openAddLesson();
   else if (view === 'students') fab.onclick = () => openStudentForm();
   else fab.onclick = () => openAddLesson();
 
@@ -1434,6 +1685,7 @@ function switchView(view) {
 function renderAll() {
   renderDashboard();
   renderLessons();
+  renderTimeline();
   renderStudents();
   renderSettings();
   updateUnpaidBadge();
@@ -1545,7 +1797,7 @@ function renderLessons() {
     // Month view
     const monthDays = getMonthDays(selectedMonth);
     const monthDate = parseDate(selectedMonth + '-01');
-    const monthName = MONTH_NAMES[monthDate.getMonth()];
+    const monthName = MONTH_NAMES_NOM[monthDate.getMonth()];
 
     // Month nav
     html += `<div class="week-nav">
@@ -1741,6 +1993,94 @@ function renderStudents() {
   document.getElementById('viewStudents').innerHTML = html;
 }
 
+// ═══ TIMELINE VIEW ═══
+function renderTimeline() {
+  const today = todayStr();
+
+  // Get lessons from 30 days ago to 60 days ahead, grouped by date
+  const startDate = addDays(today, -30);
+  const endDate = addDays(today, 60);
+
+  const timelineLessons = lessons.filter(l => l.date >= startDate && l.date <= endDate)
+    .sort((a,b) => a.date === b.date ? (a.time||'').localeCompare(b.time||'') : a.date.localeCompare(b.date));
+
+  // Group by date
+  const lessonsByDate = {};
+  timelineLessons.forEach(l => {
+    if (!lessonsByDate[l.date]) lessonsByDate[l.date] = [];
+    lessonsByDate[l.date].push(l);
+  });
+
+  let html = '';
+
+  // Header with navigation hint
+  html += `<div class="timeline-header">
+    <div class="timeline-title">Загальний список уроків</div>
+    <div class="timeline-sub">Натисніть на дату щоб перейти до дня</div>
+  </div>`;
+
+  // Generate timeline
+  const current = parseDate(startDate);
+  const endDateObj = parseDate(endDate);
+
+  while (current <= endDateObj) {
+    const dateStr = fmtDate(current);
+    const dayLessons = lessonsByDate[dateStr] || [];
+    const isToday = dateStr === today;
+    const dayName = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'][current.getDay()];
+
+    if (dayLessons.length > 0 || isToday) {
+      const todayClass = isToday ? 'timeline-day-today' : '';
+
+      html += `<div class="timeline-day ${todayClass}" id="timeline-${dateStr}">
+        <div class="timeline-date" onclick="jumpToDay('${dateStr}')">
+          <div class="timeline-date-main">${dayName}</div>
+          <div class="timeline-date-sub">${fmtDateUkr(dateStr)}</div>
+          ${isToday ? '<div class="timeline-today-badge">Сьогодні</div>' : ''}
+        </div>
+        <div class="timeline-lessons">`;
+
+      if (dayLessons.length > 0) {
+        dayLessons.forEach(l => {
+          html += renderLessonCard(l);
+        });
+      } else if (isToday) {
+        html += `<div class="timeline-empty">Сьогодні немає уроків</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  if (Object.keys(lessonsByDate).length === 0) {
+    html += `<div class="empty-state">
+      <div class="es-icon">📋</div>
+      <div class="es-text">Немає запланованих уроків</div>
+    </div>`;
+  }
+
+  document.getElementById('viewTimeline').innerHTML = html;
+
+  // Auto scroll to today
+  if (currentView === 'timeline') {
+    setTimeout(() => {
+      const todayElement = document.getElementById(`timeline-${today}`);
+      if (todayElement) {
+        todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }
+}
+
+function jumpToDay(dateStr) {
+  selectedDate = dateStr;
+  selectedWeekStart = getWeekStart(parseDate(dateStr));
+  selectedMonth = dateStr.slice(0, 7);
+  switchView('lessons');
+}
+
 // ═══ SETTINGS ═══
 function renderSettings() {
   const calendarStatus = gAccessToken ? '✅ підключено' : '⚠️ увійдіть знову для синхронізації';
@@ -1762,6 +2102,34 @@ function renderSettings() {
       </div>
     </div>
   </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="font-weight:600;margin-bottom:12px;color:var(--text)">Робочі години</div>`;
+
+  const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const dayLabels = ['Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\'ятниця', 'Субота', 'Неділя'];
+
+  dayNames.forEach((day, i) => {
+    const daySettings = settings.workingHours[day];
+    html += `<div class="working-hours-row">
+      <label class="working-hours-day">
+        <input type="checkbox" ${daySettings.enabled ? 'checked' : ''} onchange="updateWorkingHours('${day}', 'enabled', this.checked)">
+        ${dayLabels[i]}
+      </label>
+      <div class="working-hours-time ${!daySettings.enabled ? 'disabled' : ''}">
+        <input type="time" value="${daySettings.start}" onchange="updateWorkingHours('${day}', 'start', this.value)" ${!daySettings.enabled ? 'disabled' : ''}>
+        <span>–</span>
+        <input type="time" value="${daySettings.end}" onchange="updateWorkingHours('${day}', 'end', this.value)" ${!daySettings.enabled ? 'disabled' : ''}>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>
+
+  <button class="form-btn btn-primary" onclick="openEarningsView()" style="margin-top:16px">
+    💰 Переглянути заробіток
+  </button>
+
   <button class="logout-btn" onclick="auth.signOut()">
     Вийти з акаунту
   </button>
@@ -1775,6 +2143,88 @@ function renderSettings() {
 
 function updateReminder(val) {
   saveSettings({ reminderMinutes: parseInt(val) });
+}
+
+function updateWorkingHours(day, field, value) {
+  const newWorkingHours = { ...settings.workingHours };
+  newWorkingHours[day] = { ...newWorkingHours[day], [field]: value };
+  saveSettings({ workingHours: newWorkingHours });
+  renderSettings();
+}
+
+// ═══ EARNINGS VIEW ═══
+function openEarningsView() {
+  const today = todayStr();
+  const thisWeekStart = getWeekStart(new Date());
+  const thisMonth = today.slice(0, 7);
+
+  // Calculate earnings
+  const todayLessons = lessons.filter(l => l.date === today && l.status === 'paid');
+  const todayEarnings = todayLessons.reduce((sum, l) => sum + (l.price || 0), 0);
+
+  const weekEnd = addDays(thisWeekStart, 6);
+  const weekLessons = lessons.filter(l => l.date >= thisWeekStart && l.date <= weekEnd && l.status === 'paid');
+  const weekEarnings = weekLessons.reduce((sum, l) => sum + (l.price || 0), 0);
+
+  const monthLessons = lessons.filter(l => l.date.startsWith(thisMonth) && l.status === 'paid');
+  const monthEarnings = monthLessons.reduce((sum, l) => sum + (l.price || 0), 0);
+
+  // Calculate totals
+  const totalLessons = lessons.filter(l => l.status === 'paid');
+  const totalEarnings = totalLessons.reduce((sum, l) => sum + (l.price || 0), 0);
+
+  // Calculate pending (completed but not paid)
+  const pendingLessons = lessons.filter(l => l.status === 'completed');
+  const pendingEarnings = pendingLessons.reduce((sum, l) => sum + (l.price || 0), 0);
+
+  const monthDate = parseDate(thisMonth + '-01');
+  const monthName = MONTH_NAMES_NOM[monthDate.getMonth()];
+
+  let html = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">💰 Заробіток</div>
+
+      <div class="earnings-grid">
+        <div class="earnings-card earnings-today">
+          <div class="earnings-label">Сьогодні</div>
+          <div class="earnings-amount">${todayEarnings}€</div>
+          <div class="earnings-count">${todayLessons.length} урок${todayLessons.length === 1 ? '' : (todayLessons.length < 5 ? 'и' : 'ів')}</div>
+        </div>
+
+        <div class="earnings-card earnings-week">
+          <div class="earnings-label">Цей тиждень</div>
+          <div class="earnings-amount">${weekEarnings}€</div>
+          <div class="earnings-count">${weekLessons.length} урок${weekLessons.length === 1 ? '' : (weekLessons.length < 5 ? 'и' : 'ів')}</div>
+        </div>
+
+        <div class="earnings-card earnings-month">
+          <div class="earnings-label">${monthName}</div>
+          <div class="earnings-amount">${monthEarnings}€</div>
+          <div class="earnings-count">${monthLessons.length} урок${monthLessons.length === 1 ? '' : (monthLessons.length < 5 ? 'и' : 'ів')}</div>
+        </div>
+      </div>
+
+      <div class="earnings-summary">
+        <div class="earnings-summary-row">
+          <span>Всього заробіток:</span>
+          <span class="earnings-summary-amount">${totalEarnings}€</span>
+        </div>
+        <div class="earnings-summary-row">
+          <span>Очікує сплати:</span>
+          <span class="earnings-summary-pending">${pendingEarnings}€</span>
+        </div>
+        <div class="earnings-summary-row earnings-summary-total">
+          <span>Потенційний заробіток:</span>
+          <span class="earnings-summary-amount">${totalEarnings + pendingEarnings}€</span>
+        </div>
+      </div>
+
+      <button class="form-btn btn-secondary" onclick="closeModal()">Закрити</button>
+    </div>
+  </div>`;
+
+  document.getElementById('modalContainer').innerHTML = html;
 }
 
 // ═══════════════════════════════════════
@@ -1814,7 +2264,11 @@ function openStudentForm(id) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Тривалість (хв)</label>
-          <input type="number" class="form-input" id="fStudentDuration" value="${s?.defaultDuration||45}" placeholder="45">
+          <select class="form-input" id="fStudentDuration">
+            ${[15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120].map(d =>
+              `<option value="${d}" ${d == (s?.defaultDuration||45) ? 'selected' : ''}>${d} хв</option>`
+            ).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">Ціна (€)</label>
@@ -2014,7 +2468,11 @@ function openLessonForm(date, studentId, lessonId) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Тривалість (хв)</label>
-          <input type="number" class="form-input" id="fLessonDuration" value="${duration}">
+          <select class="form-input" id="fLessonDuration">
+            ${[15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120].map(d =>
+              `<option value="${d}" ${d == duration ? 'selected' : ''}>${d} хв</option>`
+            ).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">Ціна (€)</label>
