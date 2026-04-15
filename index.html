@@ -2081,7 +2081,7 @@ function renderLessons() {
       </button>`;
     });
     html += '</div>';
-  } else {
+  } else if (calendarView === 'month') {
     // Month view
     const monthDays = getMonthDays(selectedMonth);
     const monthDate = parseDate(selectedMonth + '-01');
