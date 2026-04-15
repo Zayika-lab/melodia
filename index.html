@@ -297,7 +297,7 @@ body {
   margin-bottom: 3px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .lesson-meta {
@@ -395,6 +395,27 @@ body {
 .messenger-btn.telegram { background: #D6EFFF; }
 .messenger-btn.facebook { background: #E3E8FF; }
 .messenger-btn.imessage { background: #D4F5DC; }
+
+.messenger-btn-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.messenger-btn-small:active { transform: scale(0.9); }
+.messenger-btn-small.whatsapp { background: #DCF8C6; }
+.messenger-btn-small.telegram { background: #D6EFFF; }
+.messenger-btn-small.facebook { background: #E3E8FF; }
+.messenger-btn-small.imessage { background: #D4F5DC; }
 
 /* ═══ WEEK STRIP ═══ */
 .week-strip {
@@ -660,6 +681,16 @@ body {
   transition: all 0.2s;
   min-width: 72px;
   font-family: 'DM Sans', sans-serif;
+  position: relative;
+}
+
+.suggested-chip .messenger-btn-small {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
 }
 
 .suggested-chip:active { transform: scale(0.93); }
@@ -795,6 +826,98 @@ body {
   color: var(--text);
 }
 
+/* ═══ VIEW TOGGLE ═══ */
+.view-toggle {
+  display: flex;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--border);
+}
+
+.view-toggle-btn {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.view-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* ═══ MONTH VIEW ═══ */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.month-header {
+  background: var(--primary-pale);
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.month-day {
+  background: var(--card);
+  min-height: 40px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.month-day:active { background: var(--primary-pale); }
+.month-day.today { background: var(--primary-light); }
+.month-day.selected { background: var(--primary); color: white; }
+.month-day.other-month { opacity: 0.3; }
+
+.month-day-num {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.month-day-dots {
+  display: flex;
+  gap: 1px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.month-day-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--primary-dark);
+}
+
+.month-day.selected .month-day-dot {
+  background: white;
+}
+
 /* ═══ STUDENT SELECT LIST ═══ */
 .student-select-item {
   display: flex;
@@ -808,7 +931,8 @@ body {
 
 .student-select-item:active { background: var(--primary-pale); }
 .student-select-item .ss-emoji { font-size: 1.4rem; }
-.student-select-item .ss-name { font-weight: 500; flex: 1; }
+.student-select-item .ss-info { flex: 1; }
+.student-select-item .ss-name { font-weight: 500; display: block; margin-bottom: 2px; }
 .student-select-item .ss-details { font-size: 0.8rem; color: var(--text-secondary); }
 
 /* ═══ CONFIRM DIALOG ═══ */
@@ -927,6 +1051,8 @@ let settings = { reminderMinutes: 30 };
 let currentView = 'dashboard';
 let selectedDate = todayStr();
 let selectedWeekStart = getWeekStart(new Date());
+let calendarView = 'week'; // 'week' or 'month'
+let selectedMonth = todayStr().slice(0, 7); // YYYY-MM format
 
 // ═══════════════════════════════════════
 // DATE UTILS
@@ -1097,7 +1223,10 @@ async function saveSettings(data) {
 // GOOGLE CALENDAR
 // ═══════════════════════════════════════
 async function createCalendarEvent(lesson) {
-  if (!gAccessToken) return;
+  if (!gAccessToken) {
+    console.log('No Google access token available for calendar');
+    return;
+  }
   try {
     const student = students.find(s => s.id === lesson.studentId);
     const startDT = `${lesson.date}T${lesson.time}:00`;
@@ -1121,25 +1250,45 @@ async function createCalendarEvent(lesson) {
       }
     };
 
+    console.log('Creating calendar event:', event);
+
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(event)
     });
 
+    console.log('Calendar API response status:', res.status);
+
     if (res.ok) {
       const data = await res.json();
+      console.log('Calendar event created:', data.id);
       await userRef().collection('lessons').doc(lesson.id).update({ calendarEventId: data.id });
       const idx = lessons.findIndex(l => l.id === lesson.id);
       if (idx >= 0) lessons[idx].calendarEventId = data.id;
-    } else if (res.status === 401) {
-      gAccessToken = null;
+    } else {
+      const error = await res.text();
+      console.error('Calendar API error:', res.status, error);
+      if (res.status === 401) {
+        gAccessToken = null;
+        console.log('Access token expired, need to re-authenticate');
+      }
     }
-  } catch(e) { console.error('Calendar error:', e); }
+  } catch(e) {
+    console.error('Calendar error:', e);
+  }
 }
 
 async function updateCalendarEvent(lesson) {
-  if (!gAccessToken || !lesson.calendarEventId) return;
+  if (!gAccessToken) {
+    console.log('No Google access token available for calendar update');
+    return;
+  }
+  if (!lesson.calendarEventId) {
+    console.log('No calendar event ID found for lesson, creating new event');
+    return createCalendarEvent(lesson);
+  }
+
   try {
     const startDT = `${lesson.date}T${lesson.time}:00`;
     const endDate = new Date(startDT);
@@ -1162,24 +1311,64 @@ async function updateCalendarEvent(lesson) {
       }
     };
 
+    console.log('Updating calendar event:', lesson.calendarEventId);
+
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${lesson.calendarEventId}`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(event)
     });
-    if (res.status === 401) gAccessToken = null;
-  } catch(e) { console.error('Calendar update error:', e); }
+
+    console.log('Calendar update response status:', res.status);
+
+    if (!res.ok) {
+      const error = await res.text();
+      console.error('Calendar update API error:', res.status, error);
+      if (res.status === 401) {
+        gAccessToken = null;
+        console.log('Access token expired, need to re-authenticate');
+      }
+    } else {
+      console.log('Calendar event updated successfully');
+    }
+  } catch(e) {
+    console.error('Calendar update error:', e);
+  }
 }
 
 async function deleteCalendarEvent(eventId) {
-  if (!gAccessToken || !eventId) return;
+  if (!gAccessToken) {
+    console.log('No Google access token available for calendar delete');
+    return;
+  }
+  if (!eventId) {
+    console.log('No event ID provided for deletion');
+    return;
+  }
+
   try {
+    console.log('Deleting calendar event:', eventId);
+
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${gAccessToken}` }
     });
-    if (res.status === 401) gAccessToken = null;
-  } catch(e) { console.error('Calendar delete error:', e); }
+
+    console.log('Calendar delete response status:', res.status);
+
+    if (!res.ok && res.status !== 410) { // 410 = already deleted, which is ok
+      const error = await res.text();
+      console.error('Calendar delete API error:', res.status, error);
+      if (res.status === 401) {
+        gAccessToken = null;
+        console.log('Access token expired, need to re-authenticate');
+      }
+    } else {
+      console.log('Calendar event deleted successfully');
+    }
+  } catch(e) {
+    console.error('Calendar delete error:', e);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1209,6 +1398,13 @@ function getMessengerIcon(type) {
 
 function getMessengerClass(type) {
   return type || 'whatsapp';
+}
+
+function getContactButton(student, small = false) {
+  if (!student?.messengerType || !student?.messengerContact) return '';
+
+  const sizeClass = small ? 'messenger-btn-small' : 'messenger-btn';
+  return `<a href="${getMessengerLink(student.messengerType, student.messengerContact)}" target="_blank" class="${sizeClass} ${getMessengerClass(student.messengerType)}" onclick="event.stopPropagation()" title="Написати ${student.name}">${getMessengerIcon(student.messengerType)}</a>`;
 }
 
 // ═══════════════════════════════════════
@@ -1308,39 +1504,79 @@ function renderDashboard() {
 
 // ═══ LESSONS VIEW ═══
 function renderLessons() {
-  const weekDays = [];
-  for (let i = 0; i < 7; i++) {
-    const ds = addDays(selectedWeekStart, i);
-    const d = parseDate(ds);
-    const dayLessons = lessons.filter(l => l.date === ds);
-    weekDays.push({ date: ds, dayNum: d.getDate(), dayName: DAY_NAMES[d.getDay()], lessons: dayLessons, isToday: ds === todayStr() });
-  }
-
-  const dayLessons = lessons.filter(l => l.date === selectedDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-
   let html = '';
 
-  // Week nav
-  html += `<div class="week-nav">
-    <button class="week-nav-btn" onclick="prevWeek()">‹</button>
-    <span class="week-nav-label">${fmtWeekRange(selectedWeekStart)}</span>
-    <button class="week-nav-btn" onclick="nextWeek()">›</button>
+  // View toggle
+  html += `<div class="view-toggle">
+    <button class="view-toggle-btn ${calendarView === 'week' ? 'active' : ''}" onclick="toggleCalendarView('week')">Тиждень</button>
+    <button class="view-toggle-btn ${calendarView === 'month' ? 'active' : ''}" onclick="toggleCalendarView('month')">Місяць</button>
   </div>`;
 
-  // Week strip
-  html += '<div class="week-strip">';
-  weekDays.forEach(d => {
-    const sel = d.date === selectedDate ? 'selected' : '';
-    const today = d.isToday ? 'today' : '';
-    html += `<button class="day-chip ${sel} ${today}" onclick="selectDay('${d.date}')">
-      <span class="day-name">${d.dayName}</span>
-      <span class="day-num">${d.dayNum}</span>
-      <div class="day-dots">${d.lessons.map(() => '<span class="day-dot"></span>').join('')}</div>
-    </button>`;
-  });
-  html += '</div>';
+  if (calendarView === 'week') {
+    // Week view
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const ds = addDays(selectedWeekStart, i);
+      const d = parseDate(ds);
+      const dayLessons = lessons.filter(l => l.date === ds);
+      weekDays.push({ date: ds, dayNum: d.getDate(), dayName: DAY_NAMES[d.getDay()], lessons: dayLessons, isToday: ds === todayStr() });
+    }
 
-  // Day header
+    // Week nav
+    html += `<div class="week-nav">
+      <button class="week-nav-btn" onclick="prevWeek()">‹</button>
+      <span class="week-nav-label">${fmtWeekRange(selectedWeekStart)}</span>
+      <button class="week-nav-btn" onclick="nextWeek()">›</button>
+    </div>`;
+
+    // Week strip
+    html += '<div class="week-strip">';
+    weekDays.forEach(d => {
+      const sel = d.date === selectedDate ? 'selected' : '';
+      const today = d.isToday ? 'today' : '';
+      html += `<button class="day-chip ${sel} ${today}" onclick="selectDay('${d.date}')">
+        <span class="day-name">${d.dayName}</span>
+        <span class="day-num">${d.dayNum}</span>
+        <div class="day-dots">${d.lessons.map(() => '<span class="day-dot"></span>').join('')}</div>
+      </button>`;
+    });
+    html += '</div>';
+  } else {
+    // Month view
+    const monthDays = getMonthDays(selectedMonth);
+    const monthDate = parseDate(selectedMonth + '-01');
+    const monthName = MONTH_NAMES[monthDate.getMonth()];
+
+    // Month nav
+    html += `<div class="week-nav">
+      <button class="week-nav-btn" onclick="prevMonth()">‹</button>
+      <span class="week-nav-label">${monthName} ${monthDate.getFullYear()}</span>
+      <button class="week-nav-btn" onclick="nextMonth()">›</button>
+    </div>`;
+
+    // Month grid
+    html += '<div class="month-grid">';
+
+    // Headers
+    DAY_NAMES.forEach(day => {
+      html += `<div class="month-header">${day}</div>`;
+    });
+
+    // Days
+    monthDays.forEach(d => {
+      const sel = d.date === selectedDate ? 'selected' : '';
+      const today = d.isToday ? 'today' : '';
+      const otherMonth = !d.isCurrentMonth ? 'other-month' : '';
+      html += `<div class="month-day ${sel} ${today} ${otherMonth}" onclick="selectDay('${d.date}')">
+        <span class="month-day-num">${d.dayNum}</span>
+        <div class="month-day-dots">${d.lessons.slice(0, 4).map(() => '<span class="month-day-dot"></span>').join('')}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Day lessons
+  const dayLessons = lessons.filter(l => l.date === selectedDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
   html += `<div class="section-title">${fmtDateFull(selectedDate)}</div>`;
 
   if (dayLessons.length > 0) {
@@ -1372,6 +1608,66 @@ function selectDay(d) {
   renderLessons();
 }
 
+function toggleCalendarView(view) {
+  calendarView = view;
+  if (view === 'month') {
+    selectedMonth = selectedDate.slice(0, 7);
+  } else {
+    selectedWeekStart = getWeekStart(parseDate(selectedDate));
+  }
+  renderLessons();
+}
+
+function prevMonth() {
+  const date = parseDate(selectedMonth + '-01');
+  date.setMonth(date.getMonth() - 1);
+  selectedMonth = fmtDate(date).slice(0, 7);
+  renderLessons();
+}
+
+function nextMonth() {
+  const date = parseDate(selectedMonth + '-01');
+  date.setMonth(date.getMonth() + 1);
+  selectedMonth = fmtDate(date).slice(0, 7);
+  renderLessons();
+}
+
+function getMonthDays(monthStr) {
+  const year = parseInt(monthStr.slice(0, 4));
+  const month = parseInt(monthStr.slice(5, 7)) - 1;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  // Start from Monday of the first week
+  const startDate = new Date(firstDay);
+  const dayOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+  startDate.setDate(startDate.getDate() - dayOffset);
+
+  const days = [];
+  const current = new Date(startDate);
+
+  // Generate 6 weeks (42 days)
+  for (let i = 0; i < 42; i++) {
+    const dateStr = fmtDate(current);
+    const isCurrentMonth = current.getMonth() === month;
+    const isToday = dateStr === todayStr();
+    const dayLessons = lessons.filter(l => l.date === dateStr);
+
+    days.push({
+      date: dateStr,
+      dayNum: current.getDate(),
+      isCurrentMonth,
+      isToday,
+      lessons: dayLessons
+    });
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return days;
+}
+
 // ═══ LESSON CARD ═══
 function renderLessonCard(l, showDate) {
   const statusLabels = { planned: 'Заплановано', completed: 'Відбувся', paid: 'Сплачено' };
@@ -1385,10 +1681,15 @@ function renderLessonCard(l, showDate) {
   const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
   const paymentIcon = paymentIcons[l.paymentMethod] || '💵';
 
+  const contactButton = getContactButton(student, true);
+
   return `<div class="card lesson-card" onclick="openEditLesson('${l.id}')">
     <div class="lesson-emoji ${emojiClass}">${emoji}</div>
     <div class="lesson-info">
-      <div class="lesson-name">${l.studentName || 'Учень'}</div>
+      <div class="lesson-name">
+        ${l.studentName || 'Учень'}
+        ${contactButton}
+      </div>
       <div class="lesson-meta">
         <span>${l.time || ''}</span>
         <span>${l.duration || 45} хв</span>
@@ -1455,7 +1756,10 @@ function renderSettings() {
     </div>
     <div class="setting-row">
       <span class="setting-label">Google Календар</span>
-      <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
+        ${!gAccessToken ? '<button onclick="googleLogin()" style="padding:4px 8px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:0.7rem;cursor:pointer;">Підключити</button>' : ''}
+      </div>
     </div>
   </div>
   <button class="logout-btn" onclick="auth.signOut()">
@@ -1514,7 +1818,7 @@ function openStudentForm(id) {
         </div>
         <div class="form-group">
           <label class="form-label">Ціна (€)</label>
-          <input type="number" class="form-input" id="fStudentPrice" value="${s?.defaultPrice||''}" placeholder="40">
+          <input type="number" class="form-input" id="fStudentPrice" value="${s?.defaultPrice||''}" placeholder="45">
         </div>
       </div>
 
@@ -1643,6 +1947,7 @@ function showLessonStudentPicker(date) {
       ${suggested.map(s => `<button class="suggested-chip" onclick="openLessonForm('${date}','${s.id}')">
         <span class="sc-emoji">${s.emoji||'🎵'}</span>
         <span class="sc-name">${s.name}</span>
+        ${getContactButton(s, true)}
       </button>`).join('')}
     </div>`;
   }
@@ -1651,10 +1956,16 @@ function showLessonStudentPicker(date) {
     html += `<div class="form-label" style="margin:16px 0 8px">Усі учні</div>`;
     const allStudents = suggested.length > 0 ? [...suggested, ...others] : students;
     allStudents.forEach(s => {
+      const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
+      const paymentIcon = paymentIcons[s.defaultPaymentMethod] || '💵';
+
       html += `<div class="student-select-item" onclick="openLessonForm('${date}','${s.id}')">
         <span class="ss-emoji">${s.emoji||'🎵'}</span>
-        <span class="ss-name">${s.name}</span>
-        <span class="ss-details">${s.defaultDuration||45}хв · ${s.defaultPrice||0}€</span>
+        <div class="ss-info">
+          <span class="ss-name">${s.name}</span>
+          <span class="ss-details">${s.defaultDuration||45}хв · ${s.defaultPrice||0}€ · ${paymentIcon}</span>
+        </div>
+        ${getContactButton(s, true)}
       </div>`;
     });
   } else {
@@ -1798,10 +2109,16 @@ function showUnpaid() {
       <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:16px">Загалом: <strong style="color:var(--text)">${total}€</strong></div>`;
 
   unpaid.forEach(l => {
+    const student = students.find(s => s.id === l.studentId);
+    const contactButton = getContactButton(student, true);
+
     html += `<div class="card lesson-card" style="cursor:default">
       <div class="lesson-emoji status-completed">${l.studentEmoji||'🎵'}</div>
       <div class="lesson-info">
-        <div class="lesson-name">${l.studentName}</div>
+        <div class="lesson-name">
+          ${l.studentName}
+          ${contactButton}
+        </div>
         <div class="lesson-meta">
           <span>${fmtDateUkr(l.date)}</span>
           <span>${l.time||''}</span>
