@@ -119,6 +119,9 @@ users/{userId}/
 - `deleteCalendarEvent(eventId)` — видалення події з Calendar
 - `syncMissingLessons()` — масова синхронізація несинхронізованих уроків
 - `testCalendarAccess()` — перевірка доступу до Calendar API
+- `checkAndConnectCalendar()` — автоматична перевірка та підключення Calendar
+- `forceReauth()` — примусова переавторизація з новими дозволами
+- `showCalendarConnectionStatus(status)` — відображення статусу підключення Calendar
 
 ### 🎨 **UI Rendering**
 - `renderAll()` — рендеринг всіх видів
@@ -190,6 +193,10 @@ users/{userId}/
 - ✅ Retry логіка для Calendar API
 - ✅ Масова синхронізація несинхронізованих уроків
 - ✅ Розширені дозволи Google Calendar scope
+- ✅ Автоматична перевірка підключення Calendar
+- ✅ Візуальний індикатор статусу Calendar
+- ✅ Періодична перевірка підключення (кожні 5 хв)
+- ✅ Перевірка при поверненні на вкладку
 
 **v2.0** (Квітень 2026):
 - ✅ Селектор тривалості (5-хв кроки)

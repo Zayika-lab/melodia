@@ -1333,6 +1333,23 @@ body {
   border-radius: 50%;
 }
 
+/* ═══ CALENDAR STATUS ═══ */
+.calendar-status {
+  font-size: 0.7rem;
+  margin-left: 8px;
+  transition: all 0.3s ease;
+}
+
+.calendar-status.connected { color: #22c55e; }
+.calendar-status.disconnected { color: #ef4444; }
+.calendar-status.checking { color: #3b82f6; animation: pulse 1.5s infinite; }
+.calendar-status.warning { color: #f59e0b; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
 .time-label {
   display: block;
   line-height: 1;
@@ -1408,10 +1425,14 @@ body {
 <!-- ═══ MAIN APP ═══ -->
 <div id="mainApp">
   <div class="app-header">
-    <div class="app-title">Melodia ♪</div>
+    <div class="app-title">
+      Melodia ♪
+      <span id="calendarStatus" class="calendar-status" title="Статус Google Calendar">⚪</span>
+    </div>
     <div class="header-user">
       <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
       <button class="header-earnings-btn" onclick="syncMissingLessons()" title="Синхронізувати з Google Calendar">📅</button>
+      <button class="header-earnings-btn" onclick="forceReauth()" title="Переавторизація Google Calendar">🔄</button>
       <img id="userPhoto" src="" alt="" onerror="this.style.display='none'">
     </div>
   </div>
@@ -1474,7 +1495,8 @@ const gProvider = new firebase.auth.GoogleAuthProvider();
 gProvider.addScope('https://www.googleapis.com/auth/calendar');
 gProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 gProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: 'consent',
+  access_type: 'offline'
 });
 
 let currentUser = null;
@@ -1564,8 +1586,36 @@ function googleLogin() {
   auth.signInWithPopup(gProvider).then(result => {
     if (result.credential) {
       gAccessToken = result.credential.accessToken;
+      console.log('✅ Токен отримано');
+
+      // Перевірка дозволів Calendar
+      setTimeout(async () => {
+        try {
+          const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${gAccessToken}` }
+          });
+
+          if (response.status === 403) {
+            console.warn('❌ Недостатньо дозволів для Calendar');
+            const needReauth = confirm('Недостатньо дозволів для Google Calendar.\n\nДля створення уроків в календарі потрібна переавторизація з новими дозволами.\n\nПереавторизуватись зараз?');
+            if (needReauth) {
+              forceReauth();
+              return;
+            }
+          } else if (response.ok) {
+            console.log('✅ Calendar дозволи OK');
+          }
+        } catch(e) {
+          console.log('⚠️ Не вдалося перевірити дозволи Calendar');
+        }
+
+        testCalendarAccess();
+      }, 1000);
+
+    } else {
+      console.warn('⚠️ Токен не отримано');
     }
-    testCalendarAccess();
   }).catch(err => {
     console.error("Помилка входу:", err);
 
@@ -1594,6 +1644,42 @@ async function testCalendarAccess() {
   } catch(e) {
     console.error('Помилка Calendar API:', e);
   }
+}
+
+function forceReauth() {
+  // Очищення локального токену
+  gAccessToken = null;
+
+  // Повний logout з Google
+  auth.signOut().then(() => {
+    // Очищення всіх даних
+    currentUser = null;
+    students = [];
+    lessons = [];
+
+    // Примусовий consent screen
+    const forceProvider = new firebase.auth.GoogleAuthProvider();
+    forceProvider.addScope('https://www.googleapis.com/auth/calendar');
+    forceProvider.addScope('https://www.googleapis.com/auth/calendar.events');
+    forceProvider.setCustomParameters({
+      prompt: 'consent',
+      access_type: 'offline',
+      approval_prompt: 'force'
+    });
+
+    console.log('🔄 Примусова переавторизація...');
+
+    auth.signInWithPopup(forceProvider).then(result => {
+      if (result.credential) {
+        gAccessToken = result.credential.accessToken;
+        console.log('✅ Нові дозволи отримано');
+        alert('✅ Дозволи оновлено! Тепер Calendar має працювати.');
+      }
+    }).catch(err => {
+      console.error("Помилка переавторизації:", err);
+      alert("Помилка переавторизації: " + err.message);
+    });
+  });
 }
 
 async function syncMissingLessons() {
@@ -1631,6 +1717,107 @@ async function syncMissingLessons() {
   renderAll();
 }
 
+async function checkAndConnectCalendar() {
+  console.log('🔍 Перевірка підключення до Google Calendar...');
+  showCalendarConnectionStatus('checking');
+
+  // Якщо немає токену - спробуємо отримати його автоматично
+  if (!gAccessToken && currentUser) {
+    console.log('📡 Спроба автоматичного підключення до Calendar...');
+
+    try {
+      // Спробуємо отримати токен через getToken
+      const token = await currentUser.getIdTokenResult();
+
+      // Перевірка наявності Calendar scope
+      const hasCalendarScope = await checkCalendarScope();
+
+      if (!hasCalendarScope) {
+        console.log('⚠️ Відсутні дозволи Calendar, потрібна переавторизація');
+        showCalendarConnectionStatus('needs_auth');
+        return;
+      }
+
+    } catch(e) {
+      console.log('❌ Автоматичне підключення не вдалося:', e.message);
+    }
+  }
+
+  // Перевірка актуального стану Calendar API
+  if (gAccessToken) {
+    try {
+      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
+        headers: { Authorization: `Bearer ${gAccessToken}` }
+      });
+
+      if (response.ok) {
+        console.log('✅ Google Calendar підключено і працює');
+        showCalendarConnectionStatus('connected');
+      } else if (response.status === 401) {
+        console.log('🔄 Токен прострочений, потрібна переавторизація');
+        gAccessToken = null;
+        showCalendarConnectionStatus('expired');
+      } else {
+        console.log('⚠️ Проблеми з доступом до Calendar');
+        showCalendarConnectionStatus('error');
+      }
+    } catch(e) {
+      console.log('❌ Помилка перевірки Calendar:', e.message);
+      showCalendarConnectionStatus('error');
+    }
+  } else {
+    console.log('⚠️ Немає токену Calendar');
+    showCalendarConnectionStatus('disconnected');
+  }
+}
+
+async function checkCalendarScope() {
+  try {
+    // Спроба тестового запиту до Calendar
+    if (gAccessToken) {
+      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=1', {
+        headers: { Authorization: `Bearer ${gAccessToken}` }
+      });
+      return response.status !== 403;
+    }
+    return false;
+  } catch(e) {
+    return false;
+  }
+}
+
+function showCalendarConnectionStatus(status) {
+  const statusConfig = {
+    connected: { icon: '🟢', message: '✅ Calendar підключено', class: 'connected', title: 'Google Calendar підключено' },
+    disconnected: { icon: '🔴', message: '⚠️ Calendar не підключено', class: 'disconnected', title: 'Google Calendar не підключено' },
+    expired: { icon: '🟡', message: '🔄 Потрібна переавторизація', class: 'warning', title: 'Токен прострочений' },
+    needs_auth: { icon: '🟡', message: '🔐 Потрібні дозволи Calendar', class: 'warning', title: 'Потрібні дозволи' },
+    error: { icon: '🔴', message: '❌ Помилка Calendar API', class: 'disconnected', title: 'Помилка підключення' },
+    checking: { icon: '🔵', message: '🔍 Перевірка підключення...', class: 'checking', title: 'Перевірка статусу' }
+  };
+
+  const config = statusConfig[status] || statusConfig.error;
+  console.log(config.message);
+
+  // Оновлення візуального індикатора
+  const indicator = document.getElementById('calendarStatus');
+  if (indicator) {
+    indicator.textContent = config.icon;
+    indicator.className = `calendar-status ${config.class}`;
+    indicator.title = config.title;
+  }
+
+  // Автоматичне підключення для певних статусів
+  if (status === 'needs_auth' || status === 'expired') {
+    setTimeout(() => {
+      const autoConnect = confirm('Google Calendar не підключено або потребує оновлення дозволів.\n\nПідключити автоматично?');
+      if (autoConnect) {
+        forceReauth();
+      }
+    }, 3000);
+  }
+}
+
 auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
@@ -1638,6 +1825,9 @@ auth.onAuthStateChanged(user => {
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('userPhoto').src = user.photoURL || '';
     loadData();
+
+    // Автоматична перевірка Calendar підключення
+    setTimeout(checkAndConnectCalendar, 2000);
   } else {
     currentUser = null;
     document.getElementById('loginScreen').style.display = 'flex';
@@ -3011,6 +3201,27 @@ function showUnpaid() {
 document.addEventListener('DOMContentLoaded', () => {
   selectedDate = todayStr();
   selectedWeekStart = getWeekStart(new Date());
+
+  // Периодична перевірка Calendar (кожні 5 хвилин)
+  setInterval(() => {
+    if (currentUser && gAccessToken) {
+      checkAndConnectCalendar();
+    }
+  }, 5 * 60 * 1000);
+
+  // Перевірка при поверненні на вкладку
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentUser) {
+      setTimeout(checkAndConnectCalendar, 1000);
+    }
+  });
+
+  // Перевірка при завантаженні даних
+  window.addEventListener('focus', () => {
+    if (currentUser) {
+      setTimeout(checkAndConnectCalendar, 500);
+    }
+  });
 });
 </script>
 </body>
