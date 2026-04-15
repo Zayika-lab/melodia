@@ -125,6 +125,7 @@ users/{userId}/
 - `renderStudents()` — список учнів
 - `renderSettings()` — налаштування
 - `renderLessonCard(l, showDate)` — картка уроку
+- `generateVerticalTimeScale(dateStr, dayLessons)` — вертикальна шкала часу для денного виду
 - `updateUnpaidBadge()` — badge несплачених уроків
 
 ### 🧭 **Navigation & Views**
@@ -178,6 +179,12 @@ users/{userId}/
 - OAuth2 with refresh handling
 
 ## 🌟 Останні зміни
+
+**v2.1** (Квітень 2026):
+- ✅ Вертикальна шкала часу в денному виді
+- ✅ Візуальні індикатори робочих годин
+- ✅ Покращена авторизація Google OAuth
+- ✅ Очищення та оптимізація коду
 
 **v2.0** (Квітень 2026):
 - ✅ Селектор тривалості (5-хв кроки)

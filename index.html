@@ -1227,6 +1227,112 @@ body {
   z-index: 10;
 }
 
+/* ═══ VERTICAL TIME SCALE ═══ */
+.day-lessons-container {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.vertical-time-scale {
+  flex: 0 0 60px;
+  position: relative;
+}
+
+.time-scale-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.time-mark {
+  position: relative;
+  height: 60px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.time-mark-label {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.time-mark-dot {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.time-mark.working-hours .time-mark-dot {
+  background: var(--accent-green);
+}
+
+.time-mark.lesson-time .time-mark-dot {
+  background: var(--primary);
+  width: 8px;
+  height: 8px;
+}
+
+.day-lessons-content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.lesson-card {
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.lesson-card:hover .lesson-time-indicator {
+  opacity: 1;
+}
+
+.lesson-time-indicator {
+  position: absolute;
+  left: -76px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 2px;
+  background: var(--primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.lesson-time-indicator::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+}
+
 .time-label {
   display: block;
   line-height: 1;
@@ -1839,6 +1945,65 @@ function renderDashboard() {
 }
 
 // ═══ LESSONS VIEW ═══
+function generateVerticalTimeScale(dateStr, dayLessons) {
+  const dayName = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'п\'ятниця', 'субота'][parseDate(dateStr).getDay()];
+  const workingHours = settings.workingHours[dayName] || { start: '09:00', end: '18:00', enabled: true };
+
+  if (!workingHours.enabled) {
+    return `<div class="vertical-time-scale">
+      <div style="text-align: center; color: var(--text-light); font-size: 0.8rem; margin-top: 20px;">
+        Неробочий день
+      </div>
+    </div>`;
+  }
+
+  const startHour = parseInt(workingHours.start.split(':')[0]);
+  const endHour = parseInt(workingHours.end.split(':')[0]);
+
+  // Extend range to include lessons outside working hours
+  let minHour = startHour;
+  let maxHour = endHour;
+
+  dayLessons.forEach(lesson => {
+    if (lesson.time) {
+      const lessonHour = parseInt(lesson.time.split(':')[0]);
+      minHour = Math.min(minHour, lessonHour);
+      maxHour = Math.max(maxHour, lessonHour + Math.ceil((lesson.duration || 45) / 60));
+    }
+  });
+
+  // Add some padding
+  minHour = Math.max(6, minHour - 1);
+  maxHour = Math.min(23, maxHour + 1);
+
+  let html = `<div class="vertical-time-scale">
+    <div class="time-scale-line"></div>`;
+
+  for (let hour = minHour; hour <= maxHour; hour++) {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    const isWorkingHour = hour >= startHour && hour < endHour;
+
+    // Check if there's a lesson at this time
+    const hasLesson = dayLessons.some(l => {
+      if (!l.time) return false;
+      const lessonHour = parseInt(l.time.split(':')[0]);
+      const lessonMinute = parseInt(l.time.split(':')[1] || 0);
+      const lessonEnd = lessonHour + (lessonMinute + (l.duration || 45)) / 60;
+      return hour >= lessonHour && hour < lessonEnd;
+    });
+
+    const markClass = hasLesson ? 'lesson-time' : (isWorkingHour ? 'working-hours' : '');
+
+    html += `<div class="time-mark ${markClass}">
+      <div class="time-mark-dot"></div>
+      <div class="time-mark-label">${timeStr}</div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 function renderLessons() {
   let html = '';
 
@@ -1986,29 +2151,21 @@ function renderLessons() {
     return;
   }
 
-  // Day lessons with time scale
+  // Day lessons with vertical time scale
   const dayLessons = lessons.filter(l => l.date === selectedDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-  const timeSlots = generateTimeSlots(selectedDate);
 
   html += `<div class="section-title">${fmtDateFull(selectedDate)}</div>`;
 
-  if (timeSlots.length > 0) {
-    html += `<div class="day-time-scale">
-      <div class="time-scale-header">Робочий час</div>
-      <div class="time-scale-grid">`;
+  // Generate time scale and lessons layout
+  html += `<div class="day-lessons-container">`;
 
-    timeSlots.forEach(slot => {
-      const slotClass = slot.hasLesson ? 'occupied' : (slot.isWorkingTime ? 'free' : 'non-working');
-      html += `<div class="time-slot ${slotClass}" title="${slot.time}">
-        <span class="time-label">${slot.time}</span>
-      </div>`;
-    });
+  // Vertical time scale
+  html += generateVerticalTimeScale(selectedDate, dayLessons);
 
-    html += `</div></div>`;
-  }
+  // Lessons content
+  html += `<div class="day-lessons-content">`;
 
   if (dayLessons.length > 0) {
-    html += `<div class="section-title" style="margin-top: 24px"><span class="st-icon">🎵</span> Уроки дня</div>`;
     dayLessons.forEach(l => { html += renderLessonCard(l); });
   } else {
     html += `<div class="empty-state">
@@ -2016,6 +2173,8 @@ function renderLessons() {
       <div class="es-text">Немає уроків на цей день</div>
     </div>`;
   }
+
+  html += `</div></div>`;
 
   document.getElementById('viewLessons').innerHTML = html;
 }
@@ -2214,6 +2373,7 @@ function renderLessonCard(l, showDate) {
   const contactButton = getContactButton(student, true);
 
   return `<div class="card lesson-card" onclick="openEditLesson('${l.id}')">
+    <div class="lesson-time-indicator"></div>
     <div class="lesson-emoji ${emojiClass}">${emoji}</div>
     <div class="lesson-info">
       <div class="lesson-name">
