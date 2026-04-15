@@ -1350,6 +1350,48 @@ body {
   50% { opacity: 1; }
 }
 
+/* ═══ TOGGLE SWITCH ═══ */
+.setting-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-label {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  background: #ccc;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.toggle-label::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-input:checked + .toggle-label {
+  background: var(--primary);
+}
+
+.toggle-input:checked + .toggle-label::after {
+  transform: translateX(24px);
+}
+
 .time-label {
   display: block;
   line-height: 1;
@@ -1433,6 +1475,7 @@ body {
       <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
       <button class="header-earnings-btn" onclick="syncMissingLessons()" title="Синхронізувати з Google Calendar">📅</button>
       <button class="header-earnings-btn" onclick="forceReauth()" title="Переавторизація Google Calendar">🔄</button>
+      <button class="header-earnings-btn" onclick="window.open('/debug-calendar.html', '_blank')" title="Debug Calendar API">🔧</button>
       <img id="userPhoto" src="" alt="" onerror="this.style.display='none'">
     </div>
   </div>
@@ -1505,6 +1548,7 @@ let students = [];
 let lessons = [];
 let settings = {
   reminderMinutes: 30,
+  googleCalendarEnabled: true,
   workingHours: {
     monday: { start: '09:00', end: '18:00', enabled: true },
     tuesday: { start: '09:00', end: '18:00', enabled: true },
@@ -1961,6 +2005,14 @@ async function createCalendarEvent(lesson, retryCount = 0) {
       }
     };
 
+    console.log('📅 Створюємо подію в Calendar:', {
+      summary: event.summary,
+      start: event.start,
+      end: event.end,
+      description: event.description,
+      tokenLength: gAccessToken ? gAccessToken.length : 'Немає токену'
+    });
+
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
@@ -1976,23 +2028,44 @@ async function createCalendarEvent(lesson, retryCount = 0) {
       return true;
     } else {
       const errorText = await res.text();
-      console.error(`Calendar API помилка ${res.status}:`, errorText);
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch(e) {
+        errorData = { message: errorText };
+      }
+
+      console.error(`❌ Calendar API помилка ${res.status}:`, {
+        status: res.status,
+        statusText: res.statusText,
+        error: errorData,
+        url: res.url,
+        headers: res.headers
+      });
 
       if (res.status === 401) {
         gAccessToken = null;
         if (retryCount === 0) {
-          console.log('Токен прострочений, потрібен повторний вхід');
+          console.log('🔄 Токен прострочений, потрібен повторний вхід');
           alert('Токен Google Calendar прострочений. Увійдіть знову для синхронізації з календарем.');
         }
       } else if (res.status === 403) {
-        console.error('Недостатньо дозволів для Calendar API');
-        alert('Недостатньо дозволів для Google Calendar. Увійдіть знову і надайте всі дозволи.');
+        console.error('🚫 Недостатньо дозволів для Calendar API');
+        console.error('📋 Деталі помилки:', errorData);
+        alert(`Недостатньо дозволів для Google Calendar.\n\nДеталі: ${errorData.error?.message || 'Невідома помилка'}\n\nНатисніть кнопку 🔄 для переавторизації.`);
+      } else if (res.status === 400) {
+        console.error('📝 Неправильний запит до Calendar API');
+        console.error('📋 Деталі помилки:', errorData);
+        alert(`Помилка в запиті до Calendar API.\n\nДеталі: ${errorData.error?.message || errorText}`);
       } else {
-        console.error('Невідома помилка Calendar API');
+        console.error('❓ Невідома помилка Calendar API');
+        console.error('📋 Деталі помилки:', errorData);
         if (retryCount < 2) {
-          console.log(`Повторна спроба ${retryCount + 1}/2`);
+          console.log(`🔄 Повторна спроба ${retryCount + 1}/2`);
           await new Promise(r => setTimeout(r, 1000));
           return createCalendarEvent(lesson, retryCount + 1);
+        } else {
+          alert(`Помилка Calendar API: HTTP ${res.status}\n\nДеталі: ${errorData.error?.message || errorText}\n\nВідкрийте debug інструмент: /debug-calendar.html`);
         }
       }
       return false;
@@ -2692,7 +2765,9 @@ function renderStudents() {
 
 // ═══ SETTINGS ═══
 function renderSettings() {
-  const calendarStatus = gAccessToken ? '✅ підключено' : '⚠️ увійдіть знову для синхронізації';
+  const calendarStatus = settings.googleCalendarEnabled
+    ? (gAccessToken ? '✅ підключено' : '⚠️ увійдіть знову для синхронізації')
+    : '🔴 відключено';
 
   let html = `<div class="card" style="margin-top:12px">
     <div class="setting-row">
@@ -2705,11 +2780,27 @@ function renderSettings() {
     </div>
     <div class="setting-row">
       <span class="setting-label">Google Календар</span>
+      <div class="setting-toggle">
+        <input type="checkbox" id="calendarToggle" class="toggle-input"
+               ${settings.googleCalendarEnabled ? 'checked' : ''}
+               onchange="toggleCalendarIntegration(this.checked)">
+        <label for="calendarToggle" class="toggle-label"></label>
+      </div>
+    </div>
+
+    ${settings.googleCalendarEnabled ? `
+    <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--primary-light);">
+      <span class="setting-label" style="font-size: 0.9rem;">Статус підключення</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
         ${!gAccessToken ? '<button onclick="googleLogin()" style="padding:4px 8px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:0.7rem;cursor:pointer;">Підключити</button>' : ''}
       </div>
     </div>
+    ` : `
+    <div class="setting-row" style="padding-left: 20px; opacity: 0.6;">
+      <span class="setting-label" style="font-size: 0.9rem;">ℹ️ Додаток працює незалежно від Google Calendar</span>
+    </div>
+    `}
   </div>
 
   <div class="card" style="margin-top:16px">
@@ -2754,6 +2845,33 @@ function updateWorkingHours(day, field, value) {
   const newWorkingHours = { ...settings.workingHours };
   newWorkingHours[day] = { ...newWorkingHours[day], [field]: value };
   saveSettings({ workingHours: newWorkingHours });
+  renderSettings();
+}
+
+function toggleCalendarIntegration(enabled) {
+  console.log(`📅 Google Calendar інтеграція ${enabled ? 'увімкнена' : 'вимкнена'}`);
+
+  saveSettings({ googleCalendarEnabled: enabled });
+
+  if (!enabled) {
+    // Відключення Calendar інтеграції
+    console.log('🔴 Відключення від Google Calendar...');
+    gAccessToken = null;
+    showCalendarConnectionStatus('disconnected');
+  } else {
+    // Увімкнення Calendar інтеграції
+    console.log('🟢 Увімкнення Google Calendar...');
+    if (!gAccessToken) {
+      setTimeout(() => {
+        const shouldConnect = confirm('Google Calendar увімкнено.\n\nПідключитися зараз?');
+        if (shouldConnect) {
+          googleLogin();
+        }
+      }, 500);
+    }
+    showCalendarConnectionStatus('connected');
+  }
+
   renderSettings();
 }
 
