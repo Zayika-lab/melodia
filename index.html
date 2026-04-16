@@ -2538,9 +2538,9 @@ function renderSettings() {
         ${dayLabels[i]}
       </label>
       <div class="working-hours-time ${!daySettings.enabled ? 'disabled' : ''}">
-        <input type="time" value="${daySettings.start}" onchange="updateWorkingHours('${day}', 'start', this.value)" ${!daySettings.enabled ? 'disabled' : ''}>
+        <input type="time" value="${daySettings.start}" data-day="${day}" data-field="start" ${!daySettings.enabled ? 'disabled' : ''}>
         <span>–</span>
-        <input type="time" value="${daySettings.end}" onchange="updateWorkingHours('${day}', 'end', this.value)" ${!daySettings.enabled ? 'disabled' : ''}>
+        <input type="time" value="${daySettings.end}" data-day="${day}" data-field="end" ${!daySettings.enabled ? 'disabled' : ''}>
       </div>
     </div>`;
   });
@@ -2556,6 +2556,17 @@ function renderSettings() {
   </div>`;
 
   document.getElementById('viewSettings').innerHTML = html;
+
+  // Делегований обробник для time inputs — не спрацьовує при скролі
+  document.querySelectorAll('#viewSettings input[type="time"][data-day]').forEach(input => {
+    let startValue = input.value;
+    input.addEventListener('focus', () => { startValue = input.value; });
+    input.addEventListener('blur', () => {
+      if (input.value && input.value !== startValue) {
+        updateWorkingHours(input.dataset.day, input.dataset.field, input.value);
+      }
+    });
+  });
 }
 
 function updateReminder(val) {
@@ -2566,7 +2577,13 @@ function updateWorkingHours(day, field, value) {
   const newWorkingHours = { ...settings.workingHours };
   newWorkingHours[day] = { ...newWorkingHours[day], [field]: value };
   saveSettings({ workingHours: newWorkingHours });
-  renderAll();
+  // Оновити шкалу часу без перемальовування Settings (щоб не збивати фокус)
+  if (currentView === 'settings') {
+    renderDashboard();
+    renderLessons();
+  } else {
+    renderAll();
+  }
 }
 
 // ═══ EARNINGS VIEW ═══
