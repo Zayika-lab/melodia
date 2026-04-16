@@ -1469,7 +1469,6 @@ body {
   <div class="app-header">
     <div class="app-title">
       Melodia ♪
-      <span id="calendarStatus" class="calendar-status" title="Статус Google Calendar">⚪</span>
     </div>
     <div class="header-user">
       <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
@@ -1544,6 +1543,50 @@ gProvider.setCustomParameters({
 
 let currentUser = null;
 let gAccessToken = null;
+let gTokenExpiry = 0;
+
+function saveToken(token, ttlSeconds = 3500) {
+  gAccessToken = token;
+  gTokenExpiry = Date.now() + ttlSeconds * 1000;
+  try {
+    if (token) {
+      sessionStorage.setItem('melodia_gtoken', token);
+      sessionStorage.setItem('melodia_gtoken_exp', String(gTokenExpiry));
+    } else {
+      sessionStorage.removeItem('melodia_gtoken');
+      sessionStorage.removeItem('melodia_gtoken_exp');
+    }
+  } catch(e) {}
+}
+
+function restoreToken() {
+  try {
+    const t = sessionStorage.getItem('melodia_gtoken');
+    const exp = parseInt(sessionStorage.getItem('melodia_gtoken_exp') || '0', 10);
+    if (t && exp && exp > Date.now() + 60000) {
+      gAccessToken = t;
+      gTokenExpiry = exp;
+      console.log('♻️ Calendar токен відновлено з sessionStorage');
+      return true;
+    }
+    sessionStorage.removeItem('melodia_gtoken');
+    sessionStorage.removeItem('melodia_gtoken_exp');
+  } catch(e) {}
+  return false;
+}
+
+function clearToken() {
+  gAccessToken = null;
+  gTokenExpiry = 0;
+  try {
+    sessionStorage.removeItem('melodia_gtoken');
+    sessionStorage.removeItem('melodia_gtoken_exp');
+  } catch(e) {}
+}
+
+function isTokenValid() {
+  return !!gAccessToken && gTokenExpiry > Date.now() + 10000;
+}
 let students = [];
 let lessons = [];
 let settings = {
@@ -1629,8 +1672,10 @@ function googleLogin() {
 
   auth.signInWithPopup(gProvider).then(result => {
     if (result.credential) {
-      gAccessToken = result.credential.accessToken;
-      console.log('✅ Токен отримано');
+      saveToken(result.credential.accessToken);
+      console.log('✅ Токен отримано і збережено');
+
+      if (!settings.googleCalendarEnabled) return;
 
       // Перевірка дозволів Calendar
       setTimeout(async () => {
@@ -1692,7 +1737,7 @@ async function testCalendarAccess() {
 
 function forceReauth() {
   // Очищення локального токену
-  gAccessToken = null;
+  clearToken();
 
   // Повний logout з Google
   auth.signOut().then(() => {
@@ -1715,7 +1760,7 @@ function forceReauth() {
 
     auth.signInWithPopup(forceProvider).then(result => {
       if (result.credential) {
-        gAccessToken = result.credential.accessToken;
+        saveToken(result.credential.accessToken);
         console.log('✅ Нові дозволи отримано');
         alert('✅ Дозволи оновлено! Тепер Calendar має працювати.');
       }
@@ -1762,29 +1807,17 @@ async function syncMissingLessons() {
 }
 
 async function checkAndConnectCalendar() {
+  if (!settings.googleCalendarEnabled) {
+    showCalendarConnectionStatus('disconnected');
+    return;
+  }
   console.log('🔍 Перевірка підключення до Google Calendar...');
   showCalendarConnectionStatus('checking');
 
-  // Якщо немає токену - спробуємо отримати його автоматично
-  if (!gAccessToken && currentUser) {
-    console.log('📡 Спроба автоматичного підключення до Calendar...');
-
-    try {
-      // Спробуємо отримати токен через getToken
-      const token = await currentUser.getIdTokenResult();
-
-      // Перевірка наявності Calendar scope
-      const hasCalendarScope = await checkCalendarScope();
-
-      if (!hasCalendarScope) {
-        console.log('⚠️ Відсутні дозволи Calendar, потрібна переавторизація');
-        showCalendarConnectionStatus('needs_auth');
-        return;
-      }
-
-    } catch(e) {
-      console.log('❌ Автоматичне підключення не вдалося:', e.message);
-    }
+  // Якщо токен у пам'яті протермінований — очистити
+  if (gAccessToken && gTokenExpiry && gTokenExpiry <= Date.now()) {
+    console.log('⏰ Токен протермінований локально');
+    clearToken();
   }
 
   // Перевірка актуального стану Calendar API
@@ -1799,7 +1832,7 @@ async function checkAndConnectCalendar() {
         showCalendarConnectionStatus('connected');
       } else if (response.status === 401) {
         console.log('🔄 Токен прострочений, потрібна переавторизація');
-        gAccessToken = null;
+        clearToken();
         showCalendarConnectionStatus('expired');
       } else {
         console.log('⚠️ Проблеми з доступом до Calendar');
@@ -1868,12 +1901,19 @@ auth.onAuthStateChanged(user => {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('userPhoto').src = user.photoURL || '';
+
+    // Відновлення Calendar токену з sessionStorage (переживає refresh в межах 1 години)
+    restoreToken();
+
     loadData();
 
-    // Автоматична перевірка Calendar підключення
-    setTimeout(checkAndConnectCalendar, 2000);
+    // Автоматична перевірка Calendar підключення (якщо увімкнено)
+    setTimeout(() => {
+      if (settings.googleCalendarEnabled) checkAndConnectCalendar();
+    }, 2000);
   } else {
     currentUser = null;
+    clearToken();
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('mainApp').style.display = 'none';
   }
@@ -1975,8 +2015,10 @@ async function saveSettings(data) {
 // GOOGLE CALENDAR
 // ═══════════════════════════════════════
 async function createCalendarEvent(lesson, retryCount = 0) {
-  if (!gAccessToken) {
-    console.log('Немає Calendar токену, спробуйте увійти знову');
+  if (!settings.googleCalendarEnabled) return false;
+  if (!isTokenValid()) {
+    console.log('⚠️ Calendar токен відсутній або протермінований — увійдіть знову');
+    clearToken();
     return false;
   }
 
@@ -2044,7 +2086,7 @@ async function createCalendarEvent(lesson, retryCount = 0) {
       });
 
       if (res.status === 401) {
-        gAccessToken = null;
+        clearToken();
         if (retryCount === 0) {
           console.log('🔄 Токен прострочений, потрібен повторний вхід');
           alert('Токен Google Calendar прострочений. Увійдіть знову для синхронізації з календарем.');
@@ -2082,7 +2124,8 @@ async function createCalendarEvent(lesson, retryCount = 0) {
 }
 
 async function updateCalendarEvent(lesson) {
-  if (!gAccessToken) return;
+  if (!settings.googleCalendarEnabled) return;
+  if (!isTokenValid()) { clearToken(); return; }
   if (!lesson.calendarEventId) {
     return createCalendarEvent(lesson);
   }
@@ -2117,7 +2160,7 @@ async function updateCalendarEvent(lesson) {
 
     if (!res.ok) {
       if (res.status === 401) {
-        gAccessToken = null;
+        clearToken();
       } else if (res.status === 404) {
         return createCalendarEvent(lesson);
       }
@@ -2128,7 +2171,9 @@ async function updateCalendarEvent(lesson) {
 }
 
 async function deleteCalendarEvent(eventId) {
-  if (!gAccessToken || !eventId) return;
+  if (!settings.googleCalendarEnabled) return;
+  if (!eventId) return;
+  if (!isTokenValid()) { clearToken(); return; }
 
   try {
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
@@ -2137,7 +2182,7 @@ async function deleteCalendarEvent(eventId) {
     });
 
     if (!res.ok && res.status !== 410 && res.status === 401) {
-      gAccessToken = null;
+      clearToken();
     }
   } catch(e) {
     console.error('Calendar delete error:', e);
@@ -2765,9 +2810,15 @@ function renderStudents() {
 
 // ═══ SETTINGS ═══
 function renderSettings() {
-  const calendarStatus = settings.googleCalendarEnabled
-    ? (gAccessToken ? '✅ підключено' : '⚠️ увійдіть знову для синхронізації')
-    : '🔴 відключено';
+  let calendarStatus;
+  if (!settings.googleCalendarEnabled) {
+    calendarStatus = '🔴 відключено';
+  } else if (!isTokenValid()) {
+    calendarStatus = '⚠️ потрібне підключення';
+  } else {
+    const minsLeft = Math.max(0, Math.round((gTokenExpiry - Date.now()) / 60000));
+    calendarStatus = `✅ підключено (${minsLeft} хв)`;
+  }
 
   let html = `<div class="card" style="margin-top:12px">
     <div class="setting-row">
@@ -2793,7 +2844,7 @@ function renderSettings() {
       <span class="setting-label" style="font-size: 0.9rem;">Статус підключення</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
-        ${!gAccessToken ? '<button onclick="googleLogin()" style="padding:4px 8px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:0.7rem;cursor:pointer;">Підключити</button>' : ''}
+        ${!isTokenValid() ? '<button onclick="googleLogin()" style="padding:4px 8px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:0.7rem;cursor:pointer;">Підключити</button>' : ''}
       </div>
     </div>
     ` : `
@@ -2856,7 +2907,7 @@ function toggleCalendarIntegration(enabled) {
   if (!enabled) {
     // Відключення Calendar інтеграції
     console.log('🔴 Відключення від Google Calendar...');
-    gAccessToken = null;
+    clearToken();
     showCalendarConnectionStatus('disconnected');
   } else {
     // Увімкнення Calendar інтеграції
@@ -3322,21 +3373,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Периодична перевірка Calendar (кожні 5 хвилин)
   setInterval(() => {
-    if (currentUser && gAccessToken) {
+    if (currentUser && gAccessToken && settings.googleCalendarEnabled) {
       checkAndConnectCalendar();
     }
   }, 5 * 60 * 1000);
 
   // Перевірка при поверненні на вкладку
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && currentUser) {
+    if (!document.hidden && currentUser && settings.googleCalendarEnabled) {
       setTimeout(checkAndConnectCalendar, 1000);
     }
   });
 
   // Перевірка при завантаженні даних
   window.addEventListener('focus', () => {
-    if (currentUser) {
+    if (currentUser && settings.googleCalendarEnabled) {
       setTimeout(checkAndConnectCalendar, 500);
     }
   });
