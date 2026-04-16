@@ -1973,9 +1973,9 @@ function getOverlapRanges(lessonRanges) {
 }
 
 function generateVerticalTimeScale(dateStr, dayLessons) {
-  const dayNames = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'п\'ятниця', 'субота'];
-  const dayName = dayNames[parseDate(dateStr).getDay()];
-  const workingHours = settings.workingHours[dayName] || { start: '09:00', end: '18:00', enabled: true };
+  const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayKey = dayKeys[parseDate(dateStr).getDay()];
+  const workingHours = settings.workingHours[dayKey] || { start: '09:00', end: '18:00', enabled: true };
 
   const toMin = (hhmm) => {
     if (!hhmm) return 0;
