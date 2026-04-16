@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#E8F2F8">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Melodia — Уроки Музики</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
@@ -1265,6 +1267,21 @@ body {
   box-shadow: 0 1px 3px rgba(59, 130, 246, 0.08);
 }
 
+.time-segment-outside .time-segment-bar {
+  border-style: dashed;
+  border-color: var(--accent-lavender, #b8a9d4);
+  background: #fbfaff;
+}
+
+.time-segment-outside .time-segment-occupied {
+  background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+}
+
+.time-segment-outside .time-segment-occupied::before {
+  background: #6d28d9;
+}
+
 .time-segment-occupied {
   position: absolute;
   left: 44px;
@@ -1526,6 +1543,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
 <script>
 // ═══════════════════════════════════════
@@ -1545,11 +1563,24 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const gProvider = new firebase.auth.GoogleAuthProvider();
 
+// FCM VAPID key — згенеруйте в Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+const FCM_VAPID_KEY = 'BCRDOAlms4KbscAVQ0-3HzITxpFx5CrzweQl66SRRekewL1EAbY8LeMZ0KArTQwphp5msTXY3u0qrT9BZdEDdZk';
+let messaging = null;
+try {
+  if ('serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window) {
+    messaging = firebase.messaging();
+  }
+} catch (e) {
+  console.warn('Messaging not supported:', e);
+}
+
 let currentUser = null;
 let students = [];
 let lessons = [];
 let settings = {
   reminderMinutes: 30,
+  notificationsEnabled: false,
+  fcmToken: null,
   workingHours: {
     monday: { start: '09:00', end: '18:00', enabled: true },
     tuesday: { start: '09:00', end: '18:00', enabled: true },
@@ -1705,9 +1736,16 @@ async function deleteStudent(id) {
 
 async function saveLesson(data, id) {
   if (id) {
+    const existing = lessons.find(l => l.id === id);
+    if (existing && (existing.date !== data.date || existing.time !== data.time)) {
+      data.notified = firebase.firestore.FieldValue.delete();
+    }
     await userRef().collection('lessons').doc(id).update(data);
     const idx = lessons.findIndex(l => l.id === id);
-    if (idx >= 0) lessons[idx] = { ...lessons[idx], ...data };
+    if (idx >= 0) {
+      lessons[idx] = { ...lessons[idx], ...data };
+      if (data.notified && data.notified._delegate) delete lessons[idx].notified;
+    }
   } else {
     data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
     const ref = await userRef().collection('lessons').add(data);
@@ -1743,6 +1781,69 @@ async function updateLessonStatus(id, newStatus) {
 async function saveSettings(data) {
   settings = { ...settings, ...data };
   await userRef().collection('settings').doc('app').set(settings, { merge: true });
+}
+
+// ═══════════════════════════════════════
+// PUSH NOTIFICATIONS (FCM)
+// ═══════════════════════════════════════
+async function enableNotifications() {
+  if (!messaging) {
+    alert('Сповіщення не підтримуються у цьому браузері.\n\nНа iPhone: переконайтесь, що додаток відкритий з домашнього екрану (не у Safari), iOS 16.4+.');
+    return;
+  }
+  if (!FCM_VAPID_KEY) {
+    alert('VAPID ключ не налаштовано.\n\nЗгенеруйте його в Firebase Console:\nProject Settings → Cloud Messaging → Web Push certificates → Generate key pair\n\nПотім підставте в index.html (FCM_VAPID_KEY).');
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      alert('Ви не дозволили сповіщення. Увімкніть у налаштуваннях iOS → Melodia → Сповіщення.');
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    console.log('✅ Service Worker зареєстровано');
+
+    const token = await messaging.getToken({
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: registration
+    });
+
+    if (!token) {
+      alert('Не вдалося отримати токен сповіщень. Перевірте дозволи.');
+      return;
+    }
+
+    console.log('✅ FCM токен:', token.substring(0, 20) + '...');
+    await saveSettings({ notificationsEnabled: true, fcmToken: token });
+    renderSettings();
+
+    messaging.onMessage((payload) => {
+      console.log('📬 Foreground message:', payload);
+      new Notification(payload.notification?.title || 'Melodia', {
+        body: payload.notification?.body || '',
+        icon: '/icon-192.png'
+      });
+    });
+
+    alert('✅ Сповіщення увімкнено!\n\nВи отримаєте нагадування за ' + (settings.reminderMinutes || 30) + ' хв до кожного уроку.');
+  } catch (e) {
+    console.error('Помилка налаштування сповіщень:', e);
+    alert('Помилка: ' + (e.message || e));
+  }
+}
+
+async function disableNotifications() {
+  try {
+    if (messaging) {
+      try { await messaging.deleteToken(); } catch (e) {}
+    }
+    await saveSettings({ notificationsEnabled: false, fcmToken: null });
+    renderSettings();
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1906,16 +2007,14 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
 
   const rawSegments = [];
   if (workEnabled && workEnd > workStart) {
-    rawSegments.push({ start: workStart, end: workEnd, working: true });
+    rawSegments.push({ start: workStart, end: workEnd, kind: 'work' });
   }
   lessonRanges.forEach(r => {
-    if (!workEnabled) {
-      rawSegments.push({ start: r.start, end: r.end, working: false });
-    } else if (r.end <= workStart || r.start >= workEnd) {
-      rawSegments.push({ start: r.start, end: r.end, working: false });
+    if (!workEnabled || r.end <= workStart || r.start >= workEnd) {
+      rawSegments.push({ start: r.start, end: r.end, kind: 'outside' });
     } else {
-      if (r.start < workStart) rawSegments.push({ start: r.start, end: workStart, working: true });
-      if (r.end > workEnd) rawSegments.push({ start: workEnd, end: r.end, working: true });
+      if (r.start < workStart) rawSegments.push({ start: r.start, end: workStart, kind: 'work' });
+      if (r.end > workEnd) rawSegments.push({ start: workEnd, end: r.end, kind: 'work' });
     }
   });
 
@@ -1925,8 +2024,9 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
     const last = merged[merged.length - 1];
     if (last && s.start <= last.end) {
       last.end = Math.max(last.end, s.end);
+      if (s.kind === 'work') last.kind = 'work';
     } else {
-      merged.push({ start: s.start, end: s.end });
+      merged.push({ start: s.start, end: s.end, kind: s.kind });
     }
   });
 
@@ -1936,14 +2036,15 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
     </div>`;
   }
 
-  const PX_PER_MIN = 1.1;
+  const PX_PER_MIN = 1.6;
   let html = `<div class="vertical-time-scale">`;
 
   merged.forEach((seg, idx) => {
     const segMinutes = seg.end - seg.start;
-    const segHeight = Math.max(44, segMinutes * PX_PER_MIN);
+    const segHeight = Math.max(24, segMinutes * PX_PER_MIN);
+    const segCls = seg.kind === 'outside' ? 'time-segment-outside' : '';
 
-    html += `<div class="time-segment" style="height:${segHeight}px">
+    html += `<div class="time-segment ${segCls}" style="height:${segHeight}px">
       <div class="time-segment-bar"></div>`;
 
     // Blue occupied blocks (lessons)
@@ -2451,6 +2552,16 @@ function renderStudents() {
 
 // ═══ SETTINGS ═══
 function renderSettings() {
+  const notifSupported = !!messaging;
+  const permission = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
+  const notifOn = settings.notificationsEnabled && settings.fcmToken && permission === 'granted';
+
+  let notifStatus;
+  if (!notifSupported) notifStatus = '⚠️ Не підтримується браузером';
+  else if (permission === 'denied') notifStatus = '🚫 Заблоковано в налаштуваннях iOS';
+  else if (notifOn) notifStatus = `✅ Увімкнено · за ${settings.reminderMinutes || 30} хв до уроку`;
+  else notifStatus = '⚪ Вимкнено';
+
   let html = `<div class="card" style="margin-top:12px">
     <div class="setting-row">
       <span class="setting-label">Нагадування до уроку</span>
@@ -2460,6 +2571,17 @@ function renderSettings() {
         </select>
       </div>
     </div>
+    <div class="setting-row">
+      <span class="setting-label">Push-сповіщення</span>
+      <span style="font-size:0.8rem;color:var(--text-secondary)">${notifStatus}</span>
+    </div>
+    <div style="padding:8px 16px 4px; display:flex; gap:8px;">
+      ${notifOn
+        ? `<button onclick="disableNotifications()" class="form-btn btn-secondary" style="flex:1;margin:0">Вимкнути</button>`
+        : `<button onclick="enableNotifications()" class="form-btn btn-primary" style="flex:1;margin:0" ${!notifSupported || permission === 'denied' ? 'disabled' : ''}>🔔 Увімкнути сповіщення</button>`
+      }
+    </div>
+    ${permission === 'denied' ? `<div style="padding:4px 16px 12px;font-size:0.75rem;color:var(--text-light)">Дозвольте сповіщення: Налаштування iOS → Melodia → Сповіщення</div>` : ''}
   </div>
 
   <div class="card" style="margin-top:16px">
