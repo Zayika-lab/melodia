@@ -531,6 +531,8 @@ body {
 .day-chip .day-num { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-top: 2px; }
 .day-chip .day-dots { display: flex; gap: 3px; margin-top: 4px; min-height: 6px; }
 .day-chip .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
+.day-chip .day-dot.dot-conflict { background: var(--accent-rose); }
+.day-chip.selected .day-dot.dot-conflict { background: #FFC1C1; }
 .day-chip.today { border-color: var(--primary); }
 .day-chip.selected { background: var(--primary); }
 .day-chip.selected .day-name, .day-chip.selected .day-num { color: white; }
@@ -997,10 +999,12 @@ body {
   border-radius: 50%;
   background: var(--primary-dark);
 }
+.month-day-dot.dot-conflict { background: var(--accent-rose); }
 
 .month-day.selected .month-day-dot {
   background: white;
 }
+.month-day.selected .month-day-dot.dot-conflict { background: #FFC1C1; }
 
 /* ═══ TIMELINE VIEW ═══ */
 .timeline-container {
@@ -1278,6 +1282,16 @@ body {
 
 .time-segment-outside .time-segment-lesson {
   background: var(--primary-light);
+}
+
+/* Зона перетину уроків — червона */
+.time-segment-conflict {
+  position: absolute;
+  left: 40px;
+  width: 11px;
+  background: var(--accent-rose);
+  border-radius: 4px;
+  z-index: 3;
 }
 
 .time-label {
@@ -1931,6 +1945,33 @@ function renderDashboard() {
 }
 
 // ═══ LESSONS VIEW ═══
+
+// Перевірка чи є перетин уроків на день
+function dayHasOverlap(dayLessons) {
+  const ranges = dayLessons.filter(l => l.time).map(l => {
+    const [h, m] = l.time.split(':').map(Number);
+    const start = h * 60 + (m || 0);
+    return { start, end: start + (l.duration || 45) };
+  }).sort((a, b) => a.start - b.start);
+  for (let i = 1; i < ranges.length; i++) {
+    if (ranges[i].start < ranges[i - 1].end) return true;
+  }
+  return false;
+}
+
+// Знайти зони перетину уроків (для шкали часу)
+function getOverlapRanges(lessonRanges) {
+  const overlaps = [];
+  for (let i = 0; i < lessonRanges.length; i++) {
+    for (let j = i + 1; j < lessonRanges.length; j++) {
+      const oStart = Math.max(lessonRanges[i].start, lessonRanges[j].start);
+      const oEnd = Math.min(lessonRanges[i].end, lessonRanges[j].end);
+      if (oStart < oEnd) overlaps.push({ start: oStart, end: oEnd });
+    }
+  }
+  return overlaps;
+}
+
 function generateVerticalTimeScale(dateStr, dayLessons) {
   const dayNames = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'п\'ятниця', 'субота'];
   const dayName = dayNames[parseDate(dateStr).getDay()];
@@ -2006,6 +2047,18 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
         const top = (clipStart - seg.start) * PX_PER_MIN;
         const h = Math.max(4, (clipEnd - clipStart) * PX_PER_MIN);
         html += `<div class="time-segment-lesson" style="top:${top}px;height:${h}px"></div>`;
+      }
+    });
+
+    // Червоні блоки перетину
+    const overlaps = getOverlapRanges(lessonRanges);
+    overlaps.forEach(o => {
+      const clipStart = Math.max(o.start, seg.start);
+      const clipEnd = Math.min(o.end, seg.end);
+      if (clipEnd > clipStart) {
+        const top = (clipStart - seg.start) * PX_PER_MIN;
+        const h = Math.max(4, (clipEnd - clipStart) * PX_PER_MIN);
+        html += `<div class="time-segment-conflict" style="top:${top}px;height:${h}px"></div>`;
       }
     });
 
@@ -2087,7 +2140,7 @@ function renderLessons() {
       html += `<button class="day-chip ${sel} ${today}" onclick="selectDay('${d.date}')">
         <span class="day-name">${d.dayName}</span>
         <span class="day-num">${d.dayNum}</span>
-        <div class="day-dots">${d.lessons.map(() => '<span class="day-dot"></span>').join('')}</div>
+        <div class="day-dots">${d.lessons.map(() => '<span class="day-dot"></span>').join('')}${dayHasOverlap(d.lessons) ? '<span class="day-dot dot-conflict"></span>' : ''}</div>
       </button>`;
     });
     html += '</div>';
@@ -2119,7 +2172,7 @@ function renderLessons() {
       const otherMonth = !d.isCurrentMonth ? 'other-month' : '';
       html += `<div class="month-day ${sel} ${today} ${otherMonth}" onclick="selectDay('${d.date}')">
         <span class="month-day-num">${d.dayNum}</span>
-        <div class="month-day-dots">${d.lessons.slice(0, 4).map(() => '<span class="month-day-dot"></span>').join('')}</div>
+        <div class="month-day-dots">${d.lessons.slice(0, 4).map(() => '<span class="month-day-dot"></span>').join('')}${dayHasOverlap(d.lessons) ? '<span class="month-day-dot dot-conflict"></span>' : ''}</div>
       </div>`;
     });
     html += '</div>';
