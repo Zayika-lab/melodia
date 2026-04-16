@@ -9,3 +9,4 @@ ui-debug.log
 .DS_Store
 server.log
 melodia-6b440-*.json
+.secrets/
