@@ -312,6 +312,7 @@ body {
 }
 
 .lesson-emoji.status-planned { background: var(--primary-pale); }
+.lesson-emoji.status-confirmed { background: #FFF3E0; }
 .lesson-emoji.status-completed { background: var(--accent-lavender-light); }
 .lesson-emoji.status-paid { background: var(--accent-green-light); }
 
@@ -368,8 +369,64 @@ body {
 .status-badge:active { transform: scale(0.93); }
 
 .badge-planned { background: var(--primary-pale); color: var(--primary-dark); }
+.badge-confirmed { background: #FFF3E0; color: #E65100; }
 .badge-completed { background: var(--accent-lavender-light); color: #7C6BA0; }
 .badge-paid { background: var(--accent-green-light); color: #5A9B6E; }
+
+/* ═══ STATUS DROPDOWN ═══ */
+.status-dropdown-wrap {
+  position: relative;
+}
+
+.status-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  border: 1px solid var(--border);
+  z-index: 50;
+  min-width: 150px;
+  overflow: hidden;
+  animation: dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: scale(0.9) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.status-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+}
+
+.status-dropdown-item:active { background: var(--bg); }
+.status-dropdown-item.current { font-weight: 700; background: var(--bg); }
+.status-dropdown-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+.status-dropdown-item .sd-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sd-dot-planned { background: var(--primary); }
+.sd-dot-confirmed { background: #FF9800; }
+.sd-dot-completed { background: var(--accent-lavender); }
+.sd-dot-paid { background: var(--accent-green); }
 
 /* ═══ STUDENT CARD ═══ */
 .student-card {
@@ -1164,83 +1221,18 @@ body {
   color: var(--accent-rose);
 }
 
-/* ═══ TIME SCALE ═══ */
-.day-time-scale {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-}
-
-.time-scale-header {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text);
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.time-scale-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  justify-content: center;
-}
-
-.time-slot {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 32px;
-  border-radius: var(--radius-xs);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  transition: all 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-
-.time-slot.free {
-  background: white;
-  color: var(--text-secondary);
-  border-color: var(--border);
-}
-
-.time-slot.occupied {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary-dark);
-  font-weight: 600;
-}
-
-.time-slot.non-working {
-  background: var(--bg);
-  color: var(--text-light);
-  border-color: transparent;
-  opacity: 0.6;
-}
-
-.time-slot:hover {
-  transform: scale(1.05);
-  z-index: 10;
-}
-
 /* ═══ VERTICAL TIME SCALE ═══ */
 .day-lessons-container {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   margin-top: 16px;
   align-items: flex-start;
 }
 
 .vertical-time-scale {
-  flex: 0 0 64px;
+  flex: 0 0 52px;
   position: relative;
-  padding: 4px 0;
+  padding: 0;
 }
 
 .time-scale-empty {
@@ -1255,117 +1247,92 @@ body {
   width: 100%;
 }
 
-.time-segment-bar {
+/* Одна лінія — основа шкали */
+.time-segment-line {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 44px;
-  width: 14px;
-  background: #ffffff;
-  border: 1.5px solid var(--primary-light, #bfdbfe);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.08);
-}
-
-.time-segment-outside .time-segment-bar {
-  border-style: dashed;
-  border-color: var(--accent-lavender, #b8a9d4);
-  background: #fbfaff;
-}
-
-.time-segment-outside .time-segment-occupied {
-  background: linear-gradient(180deg, #8b5cf6, #7c3aed);
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
-}
-
-.time-segment-outside .time-segment-occupied::before {
-  background: #6d28d9;
-}
-
-.time-segment-occupied {
-  position: absolute;
-  left: 44px;
-  width: 14px;
-  background: linear-gradient(180deg, #3b82f6, #2563eb);
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
-  z-index: 2;
-}
-
-.time-segment-occupied::before {
-  content: '';
-  position: absolute;
-  left: -3px;
-  top: 0;
-  bottom: 0;
   width: 3px;
-  background: #1d4ed8;
-  border-radius: 3px 0 0 3px;
+  background: var(--primary-light);
+  border-radius: 3px;
+}
+
+/* Поза робочими годинами — пунктир */
+.time-segment-outside .time-segment-line {
+  background: none;
+  border-right: 2px dashed var(--accent-lavender);
+  width: 0;
+  left: 45px;
+}
+
+/* Блок уроку на лінії */
+.time-segment-lesson {
+  position: absolute;
+  left: 40px;
+  width: 11px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-radius: 6px;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(90, 155, 191, 0.35);
+}
+
+.time-segment-outside .time-segment-lesson {
+  background: linear-gradient(180deg, var(--accent-lavender) 0%, #9B8DC4 100%);
+  box-shadow: 0 2px 6px rgba(155, 141, 196, 0.35);
 }
 
 .time-label {
   position: absolute;
-  right: 26px;
+  right: 16px;
   transform: translateY(-50%);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
   font-weight: 500;
   white-space: nowrap;
-  background: var(--bg, #f8fafc);
-  padding: 1px 4px;
+  background: var(--bg);
+  padding: 1px 3px;
   border-radius: 3px;
 }
 
 .time-label.time-label-edge {
   color: var(--text);
   font-weight: 600;
+  font-size: 0.7rem;
 }
 
 .time-label.time-label-lesson {
-  color: #1d4ed8;
+  color: var(--primary-dark);
   font-weight: 600;
 }
 
 .time-tick {
   position: absolute;
-  left: 38px;
-  width: 6px;
+  left: 40px;
+  width: 4px;
   height: 1px;
-  background: var(--border, #e2e8f0);
+  background: var(--border);
   transform: translateY(-50%);
   z-index: 1;
 }
 
 .time-gap {
-  height: 22px;
+  height: 18px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.time-gap::before {
-  content: '';
-  position: absolute;
-  left: 48px;
-  top: 50%;
-  width: 6px;
-  height: 1.5px;
-  background: var(--border, #cbd5e1);
-  transform: translateY(-50%) rotate(-20deg);
-  box-shadow: 0 5px 0 var(--border, #cbd5e1);
-}
-
 .time-gap::after {
   content: '⋮';
   position: absolute;
-  left: 44px;
+  left: 42px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-light, #94a3b8);
-  font-size: 0.75rem;
+  color: var(--text-light);
+  font-size: 0.7rem;
   line-height: 1;
-  letter-spacing: 2px;
 }
 
 .day-lessons-content {
@@ -1422,18 +1389,6 @@ body {
   transform: translateX(24px);
 }
 
-.time-label {
-  display: block;
-  line-height: 1;
-}
-
-@media (max-width: 480px) {
-  .time-slot {
-    width: 44px;
-    height: 28px;
-    font-size: 0.6rem;
-  }
-}
 
 /* ═══ STUDENT SELECT LIST ═══ */
 .student-select-item {
@@ -1979,7 +1934,8 @@ function renderDashboard() {
 
 // ═══ LESSONS VIEW ═══
 function generateVerticalTimeScale(dateStr, dayLessons) {
-  const dayName = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'п\'ятниця', 'субота'][parseDate(dateStr).getDay()];
+  const dayNames = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'п\'ятниця', 'субота'];
+  const dayName = dayNames[parseDate(dateStr).getDay()];
   const workingHours = settings.workingHours[dayName] || { start: '09:00', end: '18:00', enabled: true };
 
   const toMin = (hhmm) => {
@@ -1999,103 +1955,85 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
 
   const lessonRanges = dayLessons
     .filter(l => l.time)
-    .map(l => {
-      const start = toMin(l.time);
-      return { start, end: start + (l.duration || 45) };
-    })
+    .map(l => ({ start: toMin(l.time), end: toMin(l.time) + (l.duration || 45) }))
     .sort((a, b) => a.start - b.start);
 
-  const rawSegments = [];
+  // Сегменти: робочі години + уроки поза ними
+  const segments = [];
   if (workEnabled && workEnd > workStart) {
-    rawSegments.push({ start: workStart, end: workEnd, kind: 'work' });
+    segments.push({ start: workStart, end: workEnd, kind: 'work' });
   }
   lessonRanges.forEach(r => {
     if (!workEnabled || r.end <= workStart || r.start >= workEnd) {
-      rawSegments.push({ start: r.start, end: r.end, kind: 'outside' });
+      segments.push({ start: r.start, end: r.end, kind: 'outside' });
     } else {
-      if (r.start < workStart) rawSegments.push({ start: r.start, end: workStart, kind: 'work' });
-      if (r.end > workEnd) rawSegments.push({ start: workEnd, end: r.end, kind: 'work' });
+      if (r.start < workStart) segments.push({ start: r.start, end: workStart, kind: 'outside' });
+      if (r.end > workEnd) segments.push({ start: workEnd, end: r.end, kind: 'outside' });
     }
   });
 
-  rawSegments.sort((a, b) => a.start - b.start);
+  segments.sort((a, b) => a.start - b.start);
+
+  // Злиття перекриттів
   const merged = [];
-  rawSegments.forEach(s => {
+  segments.forEach(s => {
     const last = merged[merged.length - 1];
     if (last && s.start <= last.end) {
       last.end = Math.max(last.end, s.end);
       if (s.kind === 'work') last.kind = 'work';
     } else {
-      merged.push({ start: s.start, end: s.end, kind: s.kind });
+      merged.push({ ...s });
     }
   });
 
   if (merged.length === 0) {
-    return `<div class="vertical-time-scale">
-      <div class="time-scale-empty">Неробочий день</div>
-    </div>`;
+    return `<div class="vertical-time-scale"><div class="time-scale-empty">Неробочий день</div></div>`;
   }
 
   const PX_PER_MIN = 1.6;
-  let html = `<div class="vertical-time-scale">`;
+  let html = '<div class="vertical-time-scale">';
 
   merged.forEach((seg, idx) => {
-    const segMinutes = seg.end - seg.start;
-    const segHeight = Math.max(24, segMinutes * PX_PER_MIN);
+    const segHeight = Math.max(24, (seg.end - seg.start) * PX_PER_MIN);
     const segCls = seg.kind === 'outside' ? 'time-segment-outside' : '';
 
-    html += `<div class="time-segment ${segCls}" style="height:${segHeight}px">
-      <div class="time-segment-bar"></div>`;
+    html += `<div class="time-segment ${segCls}" style="height:${segHeight}px">`;
+    html += '<div class="time-segment-line"></div>';
 
-    // Blue occupied blocks (lessons)
+    // Блоки уроків на лінії
     lessonRanges.forEach(r => {
       const clipStart = Math.max(r.start, seg.start);
       const clipEnd = Math.min(r.end, seg.end);
       if (clipEnd > clipStart) {
         const top = (clipStart - seg.start) * PX_PER_MIN;
         const h = Math.max(4, (clipEnd - clipStart) * PX_PER_MIN);
-        html += `<div class="time-segment-occupied" style="top:${top}px;height:${h}px"></div>`;
+        html += `<div class="time-segment-lesson" style="top:${top}px;height:${h}px"></div>`;
       }
     });
 
-    // Hour labels + segment edges + lesson boundaries
+    // Мітки часу
     const labelSet = new Map();
     labelSet.set(seg.start, { cls: 'time-label-edge', text: fmtMin(seg.start) });
     labelSet.set(seg.end, { cls: 'time-label-edge', text: fmtMin(seg.end) });
 
-    const firstHour = Math.ceil(seg.start / 60);
-    const lastHour = Math.floor(seg.end / 60);
-    for (let h = firstHour; h <= lastHour; h++) {
+    for (let h = Math.ceil(seg.start / 60); h <= Math.floor(seg.end / 60); h++) {
       const m = h * 60;
-      if (!labelSet.has(m)) {
-        labelSet.set(m, { cls: '', text: fmtMin(m) });
-      }
+      if (!labelSet.has(m)) labelSet.set(m, { cls: '', text: fmtMin(m) });
     }
 
     lessonRanges.forEach(r => {
-      if (r.start > seg.start && r.start < seg.end) {
-        labelSet.set(r.start, { cls: 'time-label-lesson', text: fmtMin(r.start) });
-      }
-      if (r.end > seg.start && r.end < seg.end) {
-        if (!labelSet.has(r.end) || labelSet.get(r.end).cls !== 'time-label-lesson') {
-          labelSet.set(r.end, { cls: 'time-label-lesson', text: fmtMin(r.end) });
-        }
-      }
+      if (r.start > seg.start && r.start < seg.end) labelSet.set(r.start, { cls: 'time-label-lesson', text: fmtMin(r.start) });
+      if (r.end > seg.start && r.end < seg.end && !labelSet.has(r.end)) labelSet.set(r.end, { cls: 'time-label-lesson', text: fmtMin(r.end) });
     });
 
-    // Remove labels too close to edges/each other
+    // Прибрати мітки що занадто близько одна до одної
     const sortedKeys = [...labelSet.keys()].sort((a, b) => a - b);
     const kept = [];
     sortedKeys.forEach(k => {
       const prev = kept[kept.length - 1];
       if (prev !== undefined && (k - prev) * PX_PER_MIN < 14) {
-        const prevLabel = labelSet.get(prev);
-        const curLabel = labelSet.get(k);
         const priority = (l) => l.cls === 'time-label-edge' ? 2 : l.cls === 'time-label-lesson' ? 1 : 0;
-        if (priority(curLabel) > priority(prevLabel)) {
-          kept.pop();
-          kept.push(k);
-        }
+        if (priority(labelSet.get(k)) > priority(labelSet.get(prev))) { kept.pop(); kept.push(k); }
       } else {
         kept.push(k);
       }
@@ -2108,14 +2046,11 @@ function generateVerticalTimeScale(dateStr, dayLessons) {
       html += `<div class="time-label ${info.cls}" style="top:${top}px">${info.text}</div>`;
     });
 
-    html += `</div>`;
-
-    if (idx < merged.length - 1) {
-      html += `<div class="time-gap" title="Розрив"></div>`;
-    }
+    html += '</div>';
+    if (idx < merged.length - 1) html += '<div class="time-gap"></div>';
   });
 
-  html += `</div>`;
+  html += '</div>';
   return html;
 }
 
@@ -2379,107 +2314,13 @@ function getMonthDays(monthStr) {
   return days;
 }
 
-// ═══ TIME SCALE FUNCTIONS ═══
-function getWorkingHoursForDate(dateStr) {
-  const date = parseDate(dateStr);
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayName = dayNames[date.getDay()];
-
-  return settings.workingHours[dayName] || { start: '09:00', end: '18:00', enabled: true };
-}
-
-function generateTimeSlots(dateStr) {
-  const workingHours = getWorkingHoursForDate(dateStr);
-  const dayLessons = lessons.filter(l => l.date === dateStr);
-
-  if (!workingHours.enabled) return [];
-
-  const slots = [];
-  const startHour = parseInt(workingHours.start.split(':')[0]);
-  const startMin = parseInt(workingHours.start.split(':')[1]);
-  const endHour = parseInt(workingHours.end.split(':')[0]);
-  const endMin = parseInt(workingHours.end.split(':')[1]);
-
-  // Extend range if lessons exist outside working hours
-  let actualStartHour = startHour;
-  let actualStartMin = startMin;
-  let actualEndHour = endHour;
-  let actualEndMin = endMin;
-
-  dayLessons.forEach(lesson => {
-    if (lesson.time) {
-      const lessonHour = parseInt(lesson.time.split(':')[0]);
-      const lessonMin = parseInt(lesson.time.split(':')[1]);
-
-      if (lessonHour < actualStartHour || (lessonHour === actualStartHour && lessonMin < actualStartMin)) {
-        actualStartHour = lessonHour;
-        actualStartMin = lessonMin;
-      }
-
-      const lessonEndMin = lessonMin + (lesson.duration || 45);
-      let lessonEndHour = lessonHour;
-      if (lessonEndMin >= 60) {
-        lessonEndHour += Math.floor(lessonEndMin / 60);
-      }
-      const finalLessonEndMin = lessonEndMin % 60;
-
-      if (lessonEndHour > actualEndHour || (lessonEndHour === actualEndHour && finalLessonEndMin > actualEndMin)) {
-        actualEndHour = lessonEndHour;
-        actualEndMin = finalLessonEndMin;
-      }
-    }
-  });
-
-  // Generate 15-minute slots
-  let currentHour = actualStartHour;
-  let currentMin = actualStartMin;
-  const endTime = actualEndHour * 60 + actualEndMin;
-
-  while (currentHour * 60 + currentMin < endTime) {
-    const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
-
-    // Check if this slot has a lesson
-    const hasLesson = dayLessons.some(lesson => {
-      if (!lesson.time) return false;
-      const lessonStart = lesson.time;
-      const [lessonHour, lessonMinute] = lessonStart.split(':').map(Number);
-      const lessonStartMin = lessonHour * 60 + lessonMinute;
-      const lessonEndMin = lessonStartMin + (lesson.duration || 45);
-      const slotStartMin = currentHour * 60 + currentMin;
-
-      return slotStartMin >= lessonStartMin && slotStartMin < lessonEndMin;
-    });
-
-    const isWorkingTime = (
-      currentHour * 60 + currentMin >= startHour * 60 + startMin &&
-      currentHour * 60 + currentMin < endHour * 60 + endMin
-    );
-
-    slots.push({
-      time: timeStr,
-      hasLesson,
-      isWorkingTime
-    });
-
-    // Add 15 minutes
-    currentMin += 15;
-    if (currentMin >= 60) {
-      currentHour += 1;
-      currentMin = 0;
-    }
-  }
-
-  return slots;
-}
-
 // ═══ LESSON CARD ═══
 function renderLessonCard(l, showDate) {
-  const statusLabels = { planned: 'Заплановано', completed: 'Відбувся', paid: 'Сплачено' };
+  const statusLabels = { planned: 'Заплановано', confirmed: 'Підтверджено', completed: 'Відбувся', paid: 'Сплачено' };
   const statusClass = `badge-${l.status}`;
   const emojiClass = `status-${l.status}`;
   const student = students.find(s => s.id === l.studentId);
   const emoji = student?.emoji || l.studentEmoji || '🎵';
-  const nextStatus = l.status === 'planned' ? 'completed' : (l.status === 'completed' ? 'paid' : 'planned');
   const dateLabel = showDate ? `<span>${fmtDateUkr(l.date)}</span>` : '';
 
   const paymentIcons = { cash: '💵', card: '💳', paypal: '🅿️' };
@@ -2507,14 +2348,62 @@ function renderLessonCard(l, showDate) {
     </div>
     <div class="lesson-right">
       <div class="lesson-price">${l.price || 0}€</div>
-      <button class="status-badge ${statusClass}" onclick="event.stopPropagation(); cycleStatus('${l.id}', '${nextStatus}')">
-        ${statusLabels[l.status] || l.status}
-      </button>
+      <div class="status-dropdown-wrap">
+        <button class="status-badge ${statusClass}" onclick="event.stopPropagation(); toggleStatusDropdown('${l.id}')">
+          ${statusLabels[l.status] || l.status} ▾
+        </button>
+      </div>
     </div>
   </div>`;
 }
 
-function cycleStatus(id, newStatus) {
+let openDropdownId = null;
+
+function toggleStatusDropdown(id) {
+  // Закрити попередній
+  const existing = document.querySelector('.status-dropdown');
+  if (existing) { existing.remove(); openDropdownId = null; }
+  if (openDropdownId === id) { openDropdownId = null; return; }
+
+  openDropdownId = id;
+  const lesson = lessons.find(l => l.id === id);
+  if (!lesson) return;
+
+  const statuses = ['planned', 'confirmed', 'completed', 'paid'];
+  const labels = { planned: 'Заплановано', confirmed: 'Підтверджено', completed: 'Відбувся', paid: 'Сплачено' };
+  const icons = { planned: '📋', confirmed: '✅', completed: '🎵', paid: '💰' };
+
+  const wrap = event.target.closest('.status-dropdown-wrap');
+  if (!wrap) return;
+
+  let ddHtml = '<div class="status-dropdown">';
+  statuses.forEach(s => {
+    const cur = s === lesson.status ? 'current' : '';
+    ddHtml += `<button class="status-dropdown-item ${cur}" onclick="event.stopPropagation(); setLessonStatus('${id}','${s}')">
+      <span class="sd-dot sd-dot-${s}"></span>
+      ${icons[s]} ${labels[s]}
+    </button>`;
+  });
+  ddHtml += '</div>';
+
+  wrap.insertAdjacentHTML('beforeend', ddHtml);
+
+  // Закрити при кліку поза dropdown
+  setTimeout(() => {
+    document.addEventListener('click', closeDropdownOutside, { once: true });
+  }, 10);
+}
+
+function closeDropdownOutside() {
+  const dd = document.querySelector('.status-dropdown');
+  if (dd) dd.remove();
+  openDropdownId = null;
+}
+
+function setLessonStatus(id, newStatus) {
+  const dd = document.querySelector('.status-dropdown');
+  if (dd) dd.remove();
+  openDropdownId = null;
   updateLessonStatus(id, newStatus);
 }
 
@@ -3079,8 +2968,8 @@ function showUnpaid() {
       </div>
       <div class="lesson-right">
         <div class="lesson-price">${l.price||0}€</div>
-        <button class="status-badge badge-completed" onclick="event.stopPropagation();cycleStatus('${l.id}','paid');closeModal()">
-          Сплачено ✓
+        <button class="status-badge badge-completed" onclick="event.stopPropagation();setLessonStatus('${l.id}','paid');closeModal()">
+          Спл��чено ✓
         </button>
       </div>
     </div>`;

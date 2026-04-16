@@ -41,7 +41,7 @@ exports.lessonReminders = onSchedule(
         for (const lessonDoc of lessonsSnap.docs) {
           const lesson = lessonDoc.data();
           if (lesson.notified) continue;
-          if (lesson.status && lesson.status !== 'planned') continue;
+          if (lesson.status && lesson.status !== 'planned' && lesson.status !== 'confirmed') continue;
           if (!lesson.time) continue;
 
           const lessonDT = DateTime.fromISO(`${lesson.date}T${lesson.time}`, { zone: TZ });

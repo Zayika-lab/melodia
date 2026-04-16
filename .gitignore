@@ -7,3 +7,5 @@ ui-debug.log
 *.local
 .env
 .DS_Store
+server.log
+melodia-6b440-*.json
