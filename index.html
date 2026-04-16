@@ -2431,8 +2431,7 @@ function toggleStatusDropdown(id) {
   statuses.forEach(s => {
     const cur = s === lesson.status ? 'current' : '';
     ddHtml += `<button class="status-dropdown-item ${cur}" onclick="event.stopPropagation(); setLessonStatus('${id}','${s}')">
-      <span class="sd-dot sd-dot-${s}"></span>
-      ${icons[s]} ${labels[s]}
+      <span class="sd-dot sd-dot-${s}"></span><span>${icons[s]}</span><span>${labels[s]}</span>
     </button>`;
   });
   ddHtml += '</div>';
