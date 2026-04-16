@@ -1345,6 +1345,19 @@ body {
 .calendar-status.checking { color: #3b82f6; animation: pulse 1.5s infinite; }
 .calendar-status.warning { color: #f59e0b; }
 
+.gcal-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--primary-light);
+  background: transparent;
+  color: var(--primary);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gcal-btn:hover { background: var(--primary-light); color: white; }
+.gcal-btn:active { transform: scale(0.97); }
+
 @keyframes pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
@@ -1472,9 +1485,6 @@ body {
     </div>
     <div class="header-user">
       <button class="header-earnings-btn" onclick="openEarningsView()">💰</button>
-      <button class="header-earnings-btn" onclick="syncMissingLessons()" title="Синхронізувати з Google Calendar">📅</button>
-      <button class="header-earnings-btn" onclick="forceReauth()" title="Переавторизація Google Calendar">🔄</button>
-      <button class="header-earnings-btn" onclick="window.open('/debug-calendar.html', '_blank')" title="Debug Calendar API">🔧</button>
       <img id="userPhoto" src="" alt="" onerror="this.style.display='none'">
     </div>
   </div>
@@ -1686,12 +1696,7 @@ function googleLogin() {
           });
 
           if (response.status === 403) {
-            console.warn('❌ Недостатньо дозволів для Calendar');
-            const needReauth = confirm('Недостатньо дозволів для Google Calendar.\n\nДля створення уроків в календарі потрібна переавторизація з новими дозволами.\n\nПереавторизуватись зараз?');
-            if (needReauth) {
-              forceReauth();
-              return;
-            }
+            console.warn('❌ Недостатньо дозволів для Calendar (скоріш за все додаток не верифіковано в Google)');
           } else if (response.ok) {
             console.log('✅ Calendar дозволи OK');
           }
@@ -1772,8 +1777,12 @@ function forceReauth() {
 }
 
 async function syncMissingLessons() {
-  if (!gAccessToken) {
-    alert('Спочатку увійдіть в Google Calendar');
+  if (!settings.googleCalendarEnabled) {
+    alert('Google Calendar вимкнено в налаштуваннях');
+    return;
+  }
+  if (!isTokenValid()) {
+    alert('Спочатку натисніть "Підключити" в Налаштуваннях');
     return;
   }
 
@@ -1884,15 +1893,7 @@ function showCalendarConnectionStatus(status) {
     indicator.title = config.title;
   }
 
-  // Автоматичне підключення для певних статусів
-  if (status === 'needs_auth' || status === 'expired') {
-    setTimeout(() => {
-      const autoConnect = confirm('Google Calendar не підключено або потребує оновлення дозволів.\n\nПідключити автоматично?');
-      if (autoConnect) {
-        forceReauth();
-      }
-    }, 3000);
-  }
+  // Без автоматичних popup — юзер сам натисне кнопку в Налаштуваннях
 }
 
 auth.onAuthStateChanged(user => {
@@ -2087,27 +2088,16 @@ async function createCalendarEvent(lesson, retryCount = 0) {
 
       if (res.status === 401) {
         clearToken();
-        if (retryCount === 0) {
-          console.log('🔄 Токен прострочений, потрібен повторний вхід');
-          alert('Токен Google Calendar прострочений. Увійдіть знову для синхронізації з календарем.');
-        }
+        console.log('🔄 Токен прострочений — потрібне повторне підключення в Налаштуваннях');
       } else if (res.status === 403) {
-        console.error('🚫 Недостатньо дозволів для Calendar API');
-        console.error('📋 Деталі помилки:', errorData);
-        alert(`Недостатньо дозволів для Google Calendar.\n\nДеталі: ${errorData.error?.message || 'Невідома помилка'}\n\nНатисніть кнопку 🔄 для переавторизації.`);
+        console.warn('🚫 Недостатньо дозволів (можливо додаток не верифіковано в Google):', errorData);
       } else if (res.status === 400) {
-        console.error('📝 Неправильний запит до Calendar API');
-        console.error('📋 Деталі помилки:', errorData);
-        alert(`Помилка в запиті до Calendar API.\n\nДеталі: ${errorData.error?.message || errorText}`);
+        console.warn('📝 Неправильний запит до Calendar API:', errorData);
       } else {
-        console.error('❓ Невідома помилка Calendar API');
-        console.error('📋 Деталі помилки:', errorData);
+        console.warn('❓ Calendar API помилка:', errorData);
         if (retryCount < 2) {
-          console.log(`🔄 Повторна спроба ${retryCount + 1}/2`);
           await new Promise(r => setTimeout(r, 1000));
           return createCalendarEvent(lesson, retryCount + 1);
-        } else {
-          alert(`Помилка Calendar API: HTTP ${res.status}\n\nДеталі: ${errorData.error?.message || errorText}\n\nВідкрийте debug інструмент: /debug-calendar.html`);
         }
       }
       return false;
@@ -2842,10 +2832,13 @@ function renderSettings() {
     ${settings.googleCalendarEnabled ? `
     <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--primary-light);">
       <span class="setting-label" style="font-size: 0.9rem;">Статус підключення</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
-        ${!isTokenValid() ? '<button onclick="googleLogin()" style="padding:4px 8px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:0.7rem;cursor:pointer;">Підключити</button>' : ''}
-      </div>
+      <span style="font-size:0.85rem;color:var(--text-secondary)">${calendarStatus}</span>
+    </div>
+    <div style="padding:12px 16px 4px; display:flex; flex-wrap:wrap; gap:8px;">
+      ${!isTokenValid() ? `<button onclick="googleLogin()" class="gcal-btn">🔌 Підключити</button>` : ''}
+      <button onclick="syncMissingLessons()" class="gcal-btn" title="Синхронізувати несинхронізовані уроки">📅 Синхронізувати</button>
+      <button onclick="forceReauth()" class="gcal-btn" title="Переавторизація Google">🔄 Переавторизація</button>
+      <button onclick="window.open('/debug-calendar.html', '_blank')" class="gcal-btn" title="Debug Calendar API">🔧 Діагностика</button>
     </div>
     ` : `
     <div class="setting-row" style="padding-left: 20px; opacity: 0.6;">
