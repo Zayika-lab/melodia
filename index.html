@@ -1271,15 +1271,13 @@ body {
   position: absolute;
   left: 40px;
   width: 11px;
-  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: var(--primary-light);
   border-radius: 6px;
   z-index: 2;
-  box-shadow: 0 2px 6px rgba(90, 155, 191, 0.35);
 }
 
 .time-segment-outside .time-segment-lesson {
-  background: linear-gradient(180deg, var(--accent-lavender) 0%, #9B8DC4 100%);
-  box-shadow: 0 2px 6px rgba(155, 141, 196, 0.35);
+  background: var(--primary-light);
 }
 
 .time-label {
@@ -1468,7 +1466,7 @@ body {
   <div id="viewSettings" class="view"></div>
 
   <!-- FAB -->
-  <button class="fab" id="fabBtn" onclick="openAddLesson()">+</button>
+  <button class="fab" id="fabBtn" onclick="openAddLesson()" style="line-height:1">+</button>
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
@@ -2515,7 +2513,7 @@ function updateWorkingHours(day, field, value) {
   const newWorkingHours = { ...settings.workingHours };
   newWorkingHours[day] = { ...newWorkingHours[day], [field]: value };
   saveSettings({ workingHours: newWorkingHours });
-  renderSettings();
+  renderAll();
 }
 
 // ═══ EARNINGS VIEW ═══
